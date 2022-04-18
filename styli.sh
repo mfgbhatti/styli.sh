@@ -1,33 +1,32 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2120,SC2154,SC1090
-link="https://source.unsplash.com/random/"
+# shellcheck disable=SC2120,SC2154,SC1090,SC2034
+LINK="https://source.unsplash.com/random/"
 
-if [ -z ${XDG_CONFIG_HOME+x} ]; then
-    XDG_CONFIG_HOME="${HOME}/.config"
+if [[ -z ${XDG_CONFIG_HOME+x} ]]; then
+    XDG_CONFIG_HOME="$HOME/.config"
 fi
-if [ -z ${XDG_CACHE_HOME+x} ]; then
-    XDG_CACHE_HOME="${HOME}/.cache"
+if [[ -z ${XDG_CACHE_HOME+x} ]]; then
+    XDG_CACHE_HOME="$HOME/.cache"
 fi
-confdir="${XDG_CONFIG_HOME}/styli.sh"
-if [ ! -d "${confdir}" ]; then
-    mkdir -p "${confdir}"
+CONFDIR="${XDG_CONFIG_HOME}/styli.sh"
+if [[ ! -d "$CONFDIR" ]]; then
+    mkdir -p "$CONFDIR"
 fi
-cachedir="${XDG_CACHE_HOME}/styli.sh"
-if [ ! -d "${cachedir}" ]; then
-    mkdir -p "${cachedir}"
+CACHEDIR="${XDG_CACHE_HOME}/styli.sh"
+if [[ ! -d "$CACHEDIR" ]]; then
+    mkdir -p "$CACHEDIR"
 fi
 
-wallpaper="${cachedir}/wallpaper.jpg"
+WALLPAPER="$CACHEDIR/wallpaper.jpg"
 
-save_cmd(){
-    cp "${wallpaper}" "${HOME}/Pictures/wallpaper${RANDOM}.jpg"
+save_cmd() {
+    cp "$WALLPAPER" "$HOME/Pictures/wallpaper$RANDOM.jpg"
 }
 
 die() {
     printf "ERR: %s\n" "$1" >&2
     exit 1
 }
-
 # https://github.com/egeesin/alacritty-color-export
 # SC2120
 alacritty_change() {
@@ -36,26 +35,26 @@ alacritty_change() {
     # Wal generates a shell script that defines color0..color15
     SRC="$HOME"/.cache/wal/colors.sh
     
-    [ -e "$SRC" ] || die "Wal colors not found, exiting script. Have you executed Wal before?"
+    [[ -e "$SRC" ]] || die "Wal colors not found, exiting script. Have you executed Wal before?"
     printf "Colors found, source ready.\n"
     
     READLINK=$( command -v greadlink || command -v readlink )
     
     # Get config file
-    if [ -n "$1" ]; then
-        [ -e "$1" ] || die "Selected config doesn't exist, exiting script."
+    if [[ -n "$1" ]]; then
+        [[ -e "$1" ]] || die "Selected config doesn't exist, exiting script."
         printf "Config found, destination ready.\n"
         CFG=$1
-        [ -L "$1" ] && {
+        [[ -L "$1" ]] && {
             printf "Following symlink to config...\n"
             CFG=$($READLINK -f "$1")
         }
     else
         # Default config path in Mac systems
-        [ -e "$DEFAULT_MACOS_CONFIG" ] || die "Alacritty config not found, exiting script."
+        [[ -e "$DEFAULT_MACOS_CONFIG" ]] || die "Alacritty config not found, exiting script."
         
         CFG="$DEFAULT_MACOS_CONFIG"
-        [ -L "$DEFAULT_MACOS_CONFIG" ] && {
+        [[ -L "$DEFAULT_MACOS_CONFIG" ]] && {
             printf "Following symlink to config...\n"
             CFG=$($READLINK -f "$DEFAULT_MACOS_CONFIG")
         }
@@ -127,104 +126,98 @@ trap - INT TERM EXIT
 printf "'%s' exported to '%s'\n" "$SRC" "$CFG"
 }
 
-reddit(){
-useragent="thevinter"
-timeout=60
 
-sort=$2
-top_time=$3
-if [ -z "$sort" ]; then
-    sort="hot"
-fi
+reddit() {
+    USERAGENT="thevinter"
+    TIMEOUT=60
 
-if [ -z "$top_time" ]; then
-    top_time=""
-fi
-
-if [ -n "$1" ]; then
-    sub=$1
-else
-    if [ ! -f "${confdir}/subreddits" ]; then
-        echo "Please install the subreddits file in ${confdir}"
-        exit 2
+    SORT="$2"
+    TOP_TIME="$3"
+    if [[ -z "$SORT" ]]; then
+        SORT="hot"
     fi
-    readarray subreddits < "${confdir}/subreddits"
-    a=${#subreddits[@]}
-    b=$((RANDOM % a))
-    sub=${subreddits[$b]}
-    sub="$(echo -e "${sub}" | tr -d '[:space:]')"
-fi
 
-url="https://www.reddit.com/r/$sub/$sort/.json?raw_json=1&t=$top_time"
-content=$(wget -T "$timeout" -U "$useragent" -q -O - "$url")
-urls=$(echo -n "$content"| jq -r '.data.children[]|select(.data.post_hint|test("image")?) | .data.preview.images[0].source.url')
-# names=$(echo -n "$content"| jq -r '.data.children[]|select(.data.post_hint|test("image")?) | .data.title')
-# ids=$(echo -n "$content"| jq -r '.data.children[]|select(.data.post_hint|test("image")?) | .data.id')
-arrURLS=("$urls")
-# arrNAMES=("$names")
-# arrIDS=("$ids")
-wait # prevent spawning too many processes
-size=${#arrURLS[@]}
-if [ "$size" -eq 0 ]; then
-    echo The current subreddit is not valid.
-    exit 1
-fi
-idx=$((RANDOM % size))
-# target_url=${arrURLS[$idx]}
-# target_name=${arrNAMES[$idx]}
-# target_id=${arrIDS[$idx]}
-# ext=$(echo -n "${target_url##*.}"|cut -d '?' -f 1)
-# newname=$(echo "$target_name" | sed "s/^\///;s/\// /g")_"$subreddit"_$target_id.$ext
-wget -T $timeout -U "$useragent" --no-check-certificate -q -P down -O "$wallpaper" "$target_url" &>/dev/null
+    if [[ -z "$TOP_TIME" ]]; then
+        TOP_TIME=""
+    fi
+
+    if [[ -n "$1" ]]; then
+        SUB="$1"
+    else
+        if [[ ! -f "$CONFDIR/subreddits" ]]; then
+            echo "Please install the subreddits file in $CONFDIR"
+            exit 2
+        fi
+        readarray SUBREDDITS <"$CONFDIR/subreddits"
+        a=${#SUBREDDITS[@]}
+        b=$((RANDOM % a))
+        SUB=${SUBREDDITS[$b]}
+        SUB="$(echo -e "$SUB" | tr -d '[:space:]')"
+    fi
+
+    URL="https://www.reddit.com/r/$SUB/$SORT/.json?raw_json=1&t=$TOP_TIME"
+    CONTENT=$(wget -T "$TIMEOUT" -U "$USERAGENT" -q -O - "$URL")
+    mapfile -t URLS <<< "$(echo -n "$CONTENT" | jq -r '.data.children[]|select(.data.post_hint|test("image")?) | .data.preview.images[0].source.url')"
+    wait # prevent spawning too many processes
+    SIZE=${#URLS[@]}
+    if [[ "$SIZE" -eq 0 ]]; then
+        echo The current subreddit is not valid.
+        exit 1
+    fi
+    IDX=$((RANDOM % SIZE))
+    TARGET_URL=${URLS[$IDX]}
+    wget -T $TIMEOUT -U "$USERAGENT" --no-check-certificate -q -P down -O "$WALLPAPER" "$TARGET_URL" 2>/dev/null
 }
 
 unsplash() {
-    local search="${search// /_}"
-    if [ -n "$height" ] || [ -n "$width" ]; then
-        link="${link}${width}x${height}";
+    local SEARCH="${SEARCH// /_}"
+    if [[ -n "$HEIGHT" || -n "$WIDTH" ]]; then
+        # keeping {} for $LINK value
+        LINK="${LINK}$WIDTHx$HEIGHT"
     else
-        link="${link}1920x1080";
+        LINK="${LINK}1920x1080"
     fi
-    
-    if [ -n "$search" ]; then
-        link="${link}/?${search}"
+
+    if [[ -n "$SEARCH" ]]; then
+        LINK="${LINK}/?$SEARCH"
     fi
-    
-    wget -q -O "$wallpaper" "$link"
+    wget -q -O "$WALLPAPER" "$LINK"
 }
 
-deviantart(){
-    client_id=16531
-    client_secret=68c00f3d0ceab95b0fac638b33a3368e
-    payload="grant_type=client_credentials&client_id=${client_id}&client_secret=${client_secret}"
-    access_token=$(curl --silent -d $payload https://www.deviantart.com/oauth2/token | jq -r '.access_token')
-    if [ -n "$1" ]; then
-        artist=$1
-        url="https://www.deviantart.com/api/v1/oauth2/gallery/?username=${artist}&mode=popular&limit=24"
-    elif [ -n "$search" ]; then
-        [[ "$search" =~ ^(tag:)(.*)$ ]] && tag=${BASH_REMATCH[2]}
-        if [ -n "$tag" ]; then
-            url="https://www.deviantart.com/api/v1/oauth2/browse/tags?tag=$tag&offset=${RANDOM:0:2}&limit=24"
+deviantart() {
+    CLIENT_ID=16531
+    CLIENT_SECRET=68c00f3d0ceab95b0fac638b33a3368e
+    PAYLOAD="grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET"
+    ACCESS_TOKEN=$(curl --silent -d $PAYLOAD https://www.deviantart.com/oauth2/token | jq -r '.access_token')
+    if [[ -n "$1" ]]; then
+        ARTIST="$1"
+        URL="https://www.deviantart.com/api/v1/oauth2/gallery/?username=$ARTIST&mode=popular&limit=24"
+    elif [[ -n "$SEARCH" ]]; then
+        [[ "$SEARCH" =~ ^(tag:)(.*)$ ]] && TAG=${BASH_REMATCH[2]}
+        if [[ -n "$TAG" ]]; then
+            URL="https://www.deviantart.com/api/v1/oauth2/browse/tags?tag=$TAG&offset=${RANDOM:0:2}&limit=24"
         else
-            url="https://www.deviantart.com/api/v1/oauth2/browse/popular?q=$search&limit=24&timerange=1month"
+            URL="https://www.deviantart.com/api/v1/oauth2/browse/popular?q=$SEARCH&limit=24&timerange=1month"
         fi
     else
-        #url="https://www.deviantart.com/api/v1/oauth2/browse/hot?limit=24&offset=${offset}"
-        topics=( "adoptables" "artisan-crafts" "anthro" "comics" "drawings-and-paintings" "fan-art" "poetry" "stock-images" "sculpture" "science-fiction" "traditional-art" "street-photography" "street-art" "pixel-art" "wallpaper" "digital-art" "photo-manipulation" "science-fiction" "fractal" "game-art" "fantasy" "3d" "drawings-and-paintings" "game-art" )
-        rand=$((RANDOM % ${#topics[@]}))
-        url="https://www.deviantart.com/api/v1/oauth2/browse/topic?limit=24&topic=${topics[$rand]}"
+        TOPICS=("adoptables" "artisan-crafts" "anthro" "comics" "drawings-and-paintings" "fan-art" "poetry" "stock-images" "sculpture" "science-fiction" "traditional-art" "street-photography" "street-art" "pixel-art" "wallpaper" "digital-art" "photo-manipulation" "science-fiction" "fractal" "game-art" "fantasy" "3d" "drawings-and-paintings" "game-art")
+        RAND=$((RANDOM % ${#topics[@]}))
+        URL="https://www.deviantart.com/api/v1/oauth2/browse/topic?limit=24&topic=${TOPICS[$RAND]}"
     fi
-    content=$(curl --silent -H "Authorization: Bearer ${access_token}" -H "Accept: application/json" -H "Content-Type: application/json" "$url")
-    urls=$(echo -n "$content" | jq -r '.results[].content.src')
-    arrURLS=("$urls")
-    size=${#arrURLS[@]}
-    idx=$((RANDOM % size))
-    target_url=${arrURLS[$idx]}
-    wget --no-check-certificate -q -P down -O "$wallpaper" "$target_url" &>/dev/null
+    CONTENT=$(curl --silent -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json" -H "Content-Type: application/json" "$URL")
+    mapfile -t URLS <<< "$(echo -n "$CONTENT" | jq -r '.results[].content.src')"
+    SIZE=${#URLS[@]}
+    IDX=$((RANDOM % size))
+    TARGET_URL=${ARRURLS[$IDX]}
+    wget --no-check-certificate -q -P down -O "$WALLPAPER" "$TARGET_URL" &>/dev/null
 }
 
-usage(){
-    echo "Usage: styli.sh [-s | --search <string>]
+usage() {
+    echo -ne "Usage: 
+    styli.sh option <string>
+    Following options can be used
+
+    [-s | --search <string>]
     [-h | --height <height>]
     [-w | --width <width>]
     [-b | --fehbg <feh bg opt>]
@@ -232,8 +225,6 @@ usage(){
     [-a | --artist <deviant artist>]
     [-r | --subreddit <subreddit>]
     [-l | --link <source>]
-    [-p | --termcolor]
-    [-L | --lightwal]
     [-d | --directory]
     [-k | --kde]
     [-x | --xfce]
@@ -246,213 +237,240 @@ usage(){
 }
 
 type_check() {
-    mime_types=("image/bmp" "image/jpeg" "image/gif" "image/png" "image/heic")
-    isType=false
-    
-    for requiredType in "${mime_types[@]}"
-    do
-        imageType=$(file --mime-type "$wallpaper" | awk '{print $2}')
-        if [ "$requiredType" = "$imageType" ]; then
-            isType=true
+    MIME_TYPES=("image/bmp" "image/jpeg" "image/gif" "image/png" "image/heic")
+    PROCEED=0
+
+    for REQUIREDTYPE in "${MIME_TYPES[@]}"; do
+        IMAGETYPE=$(file --mime-type "$WALLPAPER" | awk '{print $2}')
+        if [[ "$IMAGETYPE" =~ $REQUIREDTYPE ]]; then
+            PROCEED=1
             break
         fi
     done
-    
-    if [ $isType = false ]; then
+    if [[ "$PROCEED" -eq 0 ]]; then
         echo "MIME-Type missmatch. Downloaded file is not an image!"
-        exit 1
+        exit 0
     fi
 }
 
-select_random_wallpaper () {
-    wallpaper=$(find "$dir" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)
-}
-
-pywal_cmd() {
-    
-    if [ "$pywal" -eq 1 ]; then
-        wal -c
-        wal -i "$wallpaper "-n -q
-        if [ "$TERM" = alacritty ]; then
-            alacritty_change
-        fi
-    fi
-    
-    if [ "$light" -eq 1 ]; then
-        wal -c
-        wal -i "$wallpaper"-n -q -l
-        if [ "$TERM" = alacritty ]; then
-            alacritty_change
-        fi
-    fi
-    
+select_random_wallpaper() {
+    WALLPAPER=$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)
 }
 
 sway_cmd() {
-    if [ -n "$bgtype" ]; then
-        if [ "$bgtype" == 'bg-center'  ]; then
-            mode="center"
+    if [[ -n "$BGTYPE" ]]; then
+        if [[ "$BGTYPE" == 'bg-center' ]]; then
+            MODE="center"
         fi
-        if [ "$bgtype" == 'bg-fill' ]; then
-            mode="fill"
+        if [[ "$BGTYPE" == 'bg-fill' ]]; then
+            MODE="fill"
         fi
-        if [ "$bgtype" == 'bg-max' ]; then
-            mode="fit"
+        if [[ "$BGTYPE" == 'bg-max' ]]; then
+            MODE="fit"
         fi
-        if [ "$bgtype" == 'bg-scale'	]; then
-            mode="stretch"
+        if [[ "$BGTYPE" == 'bg-scale' ]]; then
+            MODE="stretch"
         fi
-        if [ "$bgtyp"e == 'bg-tile'  ]; then
-            mode="tile"
+        if [[ "$BGTYPE" == 'bg-tile' ]]; then
+            MODE="tile"
         fi
     else
-        mode="stretch"
+        MODE="stretch"
     fi
-    swaymsg output "*" bg "$wallpaper" "$mode"
-    
+    swaymsg output "*" bg "$WALLPAPER" "$MODE"
+
 }
 
 nitrogen_cmd() {
-    for ((monitor=0; monitor < "$monitors"; monitor++))
-    do
-        local nitrogen_arr=(nitrogen --save --head="$monitor")
-        
-        if [ -n "$bgtype" ]; then
-            if [ "$bgtype" == 'bg-center' ]; then
-                nitrogen_arr+=(--set-centered)
+    i=0
+    while [ "$i" -le "$MONITORS" ]; do
+        local NITROGEN_ARR=(nitrogen --save --head="$i")
+
+        if [[ -n "$BGTYPE" ]]; then
+            if [[ "$BGTYPE" == 'bg-center' ]]; then
+                NITROGEN_ARR+=(--set-centered)
             fi
-            if [ "$bgtype" == 'bg-fill' ]; then
-                nitrogen_arr+=(--set-zoom-fill)
+            if [[ "$BGTYPE" == 'bg-fill' ]]; then
+                NITROGEN_ARR+=(--set-zoom-fill)
             fi
-            if [ "$bgtype" == 'bg-max' ]; then
-                nitrogen_arr+=(--set-zoom)
+            if [[ "$BGTYPE" == 'bg-max' ]]; then
+                NITROGEN_ARR+=(--set-zoom)
             fi
-            if [ "$bgtype" == 'bg-scale' ]; then
-                nitrogen_arr+=(--set-scaled)
+            if [[ "$BGTYPE" == 'bg-scale' ]]; then
+                NITROGEN_ARR+=(--set-scaled)
             fi
-            if [ "$bgtype" == 'bg-tile' ]; then
-                nitrogen_arr+=(--set-tiled)
+            if [[ "$BGTYPE" == 'bg-tile' ]]; then
+                NITROGEN_ARR+=(--set-tiled)
             fi
         else
-            nitrogen_arr+=(--set-scaled)
+            NITROGEN_ARR+=(--set-scaled)
         fi
-        
-        if [ -n "$custom" ]; then
-            nitrogen_arr+=("$custom")
+
+        if [[ -n "$CUSTOM" ]]; then
+            NITROGEN_ARR+=("$CUSTOM")
         fi
-        
-        nitrogen_arr+=("$wallpaper")
-        
-        "${nitrogen_arr[@]}"
+
+        NITROGEN_ARR+=("$WALLPAPER")
+
+        "${NITROGEN_ARR[[@]]}"
     done
 }
 
 kde_cmd() {
-    cp "$wallpape"r "${cachedir}/tmp.jpg"
-    qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var allDesktops = desktops();print (allDesktops);for (i=0;i<allDesktops.length;i++) {d = allDesktops[i];d.wallpaperPlugin = \"org.kde.image\";d.currentConfigGroup = Array(\"Wallpaper\", \"org.kde.image\", \"General\");d.writeConfig(\"Image\", \"file:${cachedir}/tmp.jpg\")}"
-    qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var allDesktops = desktops();print (allDesktops);for (i=0;i<allDesktops.length;i++) {d = allDesktops[i];d.wallpaperPlugin = \"org.kde.image\";d.currentConfigGroup = Array(\"Wallpaper\", \"org.kde.image\", \"General\");d.writeConfig(\"Image\", \"file:${wallpaper}\")}"
-    sleep 5 && rm "${cachedir}/tmp.jpg"
+    cp "$WALLPAPER" "$CACHEDIR/tmp.jpg"
+    qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var allDesktops = desktops();print (allDesktops);for (i=0;i<allDesktops.length;i++) {d = allDesktops[i];d.wallpaperPlugin = \"org.kde.image\";d.currentConfigGroup = Array(\"Wallpaper\", \"org.kde.image\", \"General\");d.writeConfig(\"Image\", \"file:$CACHEDIR/tmp.jpg\")}"
+    qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var allDesktops = desktops();print (allDesktops);for (i=0;i<allDesktops.length;i++) {d = allDesktops[i];d.wallpaperPlugin = \"org.kde.image\";d.currentConfigGroup = Array(\"Wallpaper\", \"org.kde.image\", \"General\");d.writeConfig(\"Image\", \"file:$WALLPAPER\")}"
+    sleep 5 && rm "$CACHEDIR/tmp.jpg"
 }
 
 xfce_cmd() {
-    # connectedOutputs=$(xrandr | grep " connected" | sed -e "s/\([A-Z0-9]\+\) connected.*/\1/")
-    # activeOutput=$(xrandr | grep -e " connected [^(]" | sed -e "s/\([A-Z0-9]\+\) connected.*/\1/")
-    # connected=$(echo "$connectedOutputs" | wc -w)
-    
     xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/image-path -n -t string -s ~/Pictures/1.jpeg
-    xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorLVDS1/workspace0/last-image -n -t string -s  ~/Pictures/1.jpeg
-    
-    for i in $(xfconf-query -c xfce4-desktop -p /backdrop -l|grep -E "screen.*/monitor.*image-path$" -e "screen.*/monitor.*/last-image$"); do
-        xfconf-query -c xfce4-desktop -p "$i" -n -t string -s "$wallpaper"
-        xfconf-query -c xfce4-desktop -p "$i"-s "$wallpaper"
+    xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorLVDS1/workspace0/last-image -n -t string -s ~/Pictures/1.jpeg
+
+    for i in $(xfconf-query -c xfce4-desktop -p /backdrop -l | grep -E "screen.*/monitor.*image-path$" -e "screen.*/monitor.*/last-image$"); do
+        xfconf-query -c xfce4-desktop -p "$i" -n -t string -s "$WALLPAPER"
+        xfconf-query -c xfce4-desktop -p "$i"-s "$WALLPAPER"
     done
 }
 
-gnome_cmd() {
-    # gsettings set org.gnome.desktop.background picture-uri "file://${wallpaper}"
-    gsettings set org.gnome.desktop.background draw-background false && gsettings set org.gnome.desktop.background picture-uri "file://${wallpaper}" && gsettings set org.gnome.desktop.background draw-background true
-}
+# gnome_cmd() {
+#     gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER"
+#     gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"
+# }
 
 feh_cmd() {
-    local feh=(feh)
-    if [ -n "$bgtype" ]; then
-        if [ "$bgtype" == 'bg-center' ]; then
-            feh+=(--bg-center)
+    local FEH=(feh)
+    if [[ -n "$BGTYPE" ]]; then
+        if [[ "$BGTYPE" == 'bg-center' ]]; then
+            FEH+=(--bg-center)
         fi
-        if [ "$bgtype" == 'bg-fill' ]; then
-            feh+=(--bg-fill)
+        if [[ "$BGTYPE" == 'bg-fill' ]]; then
+            FEH+=(--bg-fill)
         fi
-        if [ "$bgtype" == 'bg-max' ]; then
-            feh+=(--bg-max)
+        if [[ "$BGTYPE" == 'bg-max' ]]; then
+            FEH+=(--bg-max)
         fi
-        if [ "$bgtype" == 'bg-scale' ]; then
-            feh+=(--bg-scale)
+        if [[ "$BGTYPE" == 'bg-scale' ]]; then
+            FEH+=(--bg-scale)
         fi
-        if [ "$bgtype" == 'bg-tile' ]; then
-            feh+=(--bg-tile)
+        if [[ "$BGTYPE" == 'bg-tile' ]]; then
+            FEH+=(--bg-tile)
         fi
     else
-        feh+=(--bg-scale)
+        FEH+=(--bg-scale)
     fi
-    
-    if [ -n "$custom" ]; then
-        feh+=("$custom")
+
+    if [[ -n "$CUSTOM" ]]; then
+        FEH+=("$CUSTOM")
     fi
-    
-    feh+=("$wallpaper")
-    
-    "${feh[@]}" >/dev/null 2>&1
+
+    FEH+=("$WALLPAPER")
+
+    "${FEH[@]}" >/dev/null 2>&1
 }
 
-pywal=0
-light=0
-kde=false
-xfce=false
-gnome=false
-nitrogen=false
-sway=false
-monitors=1
+# 1 is true
+# 0 is false
+LIGHT=0
+KDE=0
+XFCE=0
+GNOME=0
+NITROGEN=0
+SWAY=0
+MONITORS=1
 
-# PARSED_ARGUMENTS=$(getopt -a -n "$0" -o h:w:s:l:b:r:a:c:d:m:pLknxgy:sa --long search:,height:,width:,fehbg:,fehopt:,artist:,subreddit:,directory:,monitors:,termcolor:,lighwal:,kde,nitrogen,xfce,gnome,sway,save -- "$@")
+# SC2034
+PARSED_ARGUMENTS=$(getopt -a -n "$0" -o h:w:s:l:b:r:a:c:d:m:pLknxgy:sa --long search:,height:,width:,fehbg:,fehopt:,artist:,subreddit:,directory:,monitors:,termcolor:,lighwal:,kde,nitrogen,xfce,gnome,sway,save -- "$@")
 
 VALID_ARGUMENTS=$?
-if [ "$VALID_ARGUMENTS" != "0" ]; then
+if [[ "$VALID_ARGUMENTS" != "0" ]]; then
     usage
     exit
 fi
-while :
-do
-    case "${1}" in
-        -b | --fehbg)     bgtype=${2} ; shift 2 ;;
-        -s | --search)    search=${2} ; shift 2 ;;
-        -sa | --save)    save=true ; shift ;;
-        -h | --height)    height=${2} ; shift 2 ;;
-        -w | --width)     width=${2} ; shift 2 ;;
-        -l | --link)      link=${2} ; shift 2 ;;
-        -r | --subreddit) sub=${2} ; shift 2 ;;
-        -a | --artist) artist=${2} ; shift 2 ;;
-        -c | --fehopt)    custom=${2} ; shift 2 ;;
-        -m | --monitors)  monitors=${2} ; shift 2 ;;
-        -n | --nitrogen)  nitrogen=true ; shift ;;
-        -d | --directory) dir=${2} ; shift 2 ;;
-        -p | --termcolor) pywal=1 ; shift ;;
-        -L | --lightwal)  light=1 ; shift ;;
-        -k | --kde)       kde=true ; shift ;;
-        -x | --xfce)      xfce=true ; shift ;;
-        -g | --gnome)     gnome=true ; shift ;;
-        -y | --sway)      sway=true ; shift ;;
-        -- | '') shift; break ;;
-        *) echo "Unexpected option: $1 - this should not happen." ; usage ;;
+while true; do
+    case "$1" in
+    -b | --fehbg)
+        BGTYPE="$2"
+        shift 2
+        ;;
+    -s | --search)
+        SEARCH="$2"
+        shift 2
+        ;;
+    -sa | --save)
+        SAVE=1
+        shift
+        ;;
+    -h | --height)
+        HEIGHT="$2"
+        shift 2
+        ;;
+    -w | --width)
+        WIDTH="$2"
+        shift 2
+        ;;
+    -l | --link)
+        LINK="$2"
+        shift 2
+        ;;
+    -r | --subreddit)
+        SUB="$2"
+        shift 2
+        ;;
+    -a | --artist)
+        ARTIST="$2"
+        shift 2
+        ;;
+    -c | --fehopt)
+        CUSTOM="$2"
+        shift 2
+        ;;
+    -m | --monitors)
+        MONITORS="$2"
+        shift 2
+        ;;
+    -n | --nitrogen)
+        NITROGEN=1
+        shift
+        ;;
+    -d | --directory)
+        DIR="$2"
+        shift 2
+        ;;
+    -k | --kde)
+        KDE=1
+        shift
+        ;;
+    -x | --xfce)
+        XFCE=1
+        shift
+        ;;
+    -g | --gnome)
+        GNOME=1
+        shift
+        ;;
+    -y | --sway)
+        SWAY=1
+        shift
+        ;;
+    -- | '')
+        shift
+        break
+        ;;
+    *)
+        echo "Unexpected option: $1 this should not happen."
+        usage
+        ;;
     esac
 done
 
-if [ -n "$dir" ]; then
+if [[ -n "$DIR" ]]; then
     select_random_wallpaper
-elif [ "$link" = "reddit" ] || [ -n "$sub" ]; then
-    reddit "$sub"
-elif [ "$link" = "deviantart" ] || [ -n "$artist" ]; then
-    deviantart "$artist"
-elif [ -n "$save" ]; then
+elif [[ "$LINK" = "reddit" || -n "$SUB" ]]; then
+    reddit "$SUB"
+elif [[ "$LINK" = "deviantart" ]] || [[ -n "$ARTIST" ]]; then
+    deviantart "$ARTIST"
+elif [[ -n "$SAVE" ]]; then
     save_cmd
 else
     unsplash
@@ -460,19 +478,16 @@ fi
 
 type_check
 
-if [ $kde = true ]; then
+if [[ $KDE -eq 1 ]]; then
     kde_cmd
-elif [ $xfce = true ]; then
+elif [[ $XFCE -eq 1 ]]; then
     xfce_cmd
-elif [ $gnome = true ]; then
+elif [[ $GNOME -eq 1 ]]; then
     gnome_cmd
-elif [ $nitrogen = true ]; then
+elif [[ $NITROGEN -eq 1 ]]; then
     nitrogen_cmd
-elif [ $sway = true ]; then
+elif [[ $SWAY -eq 1 ]]; then
     sway_cmd
 else
-    feh_cmd
+    feh_cmd 2>/dev/null
 fi
-
-
-pywal_cmd
