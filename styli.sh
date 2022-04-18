@@ -333,10 +333,10 @@ xfce_cmd() {
     done
 }
 
-# gnome_cmd() {
-#     gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER"
-#     gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"
-# }
+gnome_cmd() {
+    gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER"
+    gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"
+}
 
 feh_cmd() {
     local FEH=(feh)
