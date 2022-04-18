@@ -217,21 +217,21 @@ usage() {
     styli.sh option <string>
     Following options can be used
 
-    [-s | --search <string>]
-    [-h | --height <height>]
-    [-w | --width <width>]
+    [-a | --artist <deviant artist>]
     [-b | --fehbg <feh bg opt>]
     [-c | --fehopt <feh opt>]
-    [-a | --artist <deviant artist>]
-    [-r | --subreddit <subreddit>]
-    [-l | --link <source>]
     [-d | --directory]
-    [-k | --kde]
-    [-x | --xfce]
     [-g | --gnome]
+    [-h | --height <height>]
+    [-k | --kde]
+    [-l | --link <source>]
     [-m | --monitors <monitor count (nitrogen)>]
     [-n | --nitrogen]
+    [-r | --subreddit <subreddit>]
+    [-s | --search <string>]
     [-sa | --save]    <Save current image to pictures directory>
+    [-w | --width <width>]
+    [-x | --xfce]
     "
     exit 2
 }
@@ -415,6 +415,7 @@ while true; do
         ;;
     -r | --subreddit)
         SUB="$2"
+        gnome_cmd
         shift 2
         ;;
     -a | --artist)

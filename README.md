@@ -8,13 +8,12 @@ a random image from the specified subreddits. If you have pywal it also can set 
 
 ## Requirements
 
-This script is made to work with ```feh```, ```nitrogen```, 
-```XFCE```, ```GNOME```, ```KDE``` or  ```Sway```, having one of those is a requirement.```
+This script is made to work with `feh`, `nitrogen`, 
+`XFCE`, `GNOME`, `KDE` or  `Sway`, having one of those is a requirement.
 ## Install
 ```
-git clone https://github.com/thevinter/styli.sh
-cd styli.sh
-./styli.sh
+git clone https://github.com/thevinter/styli.sh .config/styl.sh
+./.config/styli.sh
 ```
 
 ## Usage
@@ -51,8 +50,6 @@ $ ./styli.sh -b bg-scale -r widescreen-wallpaper
 $ ./styli.sh -c <flags>
 $ ./styli.sh -c --no-xinerama -r widescreen-wallpaper
 
-# To automatically set the terminal colors
-$ ./styli.sh -p
 
 # To use nitrogen instead of feh
 $ ./styli.sh -n
