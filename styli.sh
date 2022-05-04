@@ -207,7 +207,7 @@ deviantart() {
     CONTENT=$(curl --silent -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json" -H "Content-Type: application/json" "$URL")
     mapfile -t URLS <<< "$(echo -n "$CONTENT" | jq -r '.results[].content.src')"
     SIZE=${#URLS[@]}
-    IDX=$((RANDOM % size))
+    IDX=$((RANDOM % SIZE))
     TARGET_URL=${ARRURLS[$IDX]}
     wget --no-check-certificate -q -P down -O "$WALLPAPER" "$TARGET_URL" &>/dev/null
 }
