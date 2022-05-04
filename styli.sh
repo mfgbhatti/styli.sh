@@ -185,8 +185,8 @@ unsplash() {
 }
 
 deviantart() {
-    CLIENT_ID=16531
-    CLIENT_SECRET=68c00f3d0ceab95b0fac638b33a3368e
+    CLIENT_ID="19596"
+    CLIENT_SECRET="7fe32857230fed73fea8af17626f5a58"
     PAYLOAD="grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET"
     ACCESS_TOKEN=$(curl --silent -d $PAYLOAD https://www.deviantart.com/oauth2/token | jq -r '.access_token')
     if [[ -n "$1" ]]; then
@@ -208,7 +208,7 @@ deviantart() {
     mapfile -t URLS <<< "$(echo -n "$CONTENT" | jq -r '.results[].content.src')"
     SIZE=${#URLS[@]}
     IDX=$((RANDOM % SIZE))
-    TARGET_URL=${ARRURLS[$IDX]}
+    TARGET_URL=${URLS[$IDX]}
     wget --no-check-certificate -q -P down -O "$WALLPAPER" "$TARGET_URL" &>/dev/null
 }
 
