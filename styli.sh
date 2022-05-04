@@ -185,8 +185,8 @@ unsplash() {
 }
 
 deviantart() {
-    CLIENT_ID="19596"
-    CLIENT_SECRET="7fe32857230fed73fea8af17626f5a58"
+    CLIENT_ID="16531"
+    CLIENT_SECRET="68c00f3d0ceab95b0fac638b33a3368e"
     PAYLOAD="grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET"
     ACCESS_TOKEN=$(curl --silent -d $PAYLOAD https://www.deviantart.com/oauth2/token | jq -r '.access_token')
     if [[ -n "$1" ]]; then
