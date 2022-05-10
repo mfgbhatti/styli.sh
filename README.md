@@ -24,6 +24,9 @@ $ ./styli.sh
 # Save the current image to ~/Pictures directory
 $ ./styli.sh -sa
 
+# Update wallpaper with bing daily wallpaper
+$  ./styli.sh -bi
+
 # To specify a desired width or height
 $ ./styli.sh -w 1080 -h 720
 $ ./styli.sh -w 2560

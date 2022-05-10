@@ -184,6 +184,14 @@ unsplash() {
     wget -q -O "$WALLPAPER" "$LINK"
 }
 
+bing_daily() {
+    JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1")
+    URL=$(echo "$JSON" | jq '.images[0].url' | sed -e 's/^"//'  -e 's/"$//')
+    IMAGE_URL="http://www.bing.com"${URL}
+    echo "$URL"
+    wget -q -O "$WALLPAPER" "$IMAGE_URL"
+}
+
 deviantart() {
     CLIENT_ID="16531"
     CLIENT_SECRET="68c00f3d0ceab95b0fac638b33a3368e"
@@ -219,6 +227,7 @@ usage() {
 
     [ -a | --artist <deviant artist> ]
     [ -b | --fehbg <feh bg opt> ]
+    [ -bi | --bing <bing daily wallpaper>]
     [ -c | --fehopt <feh opt> ]
     [ -d | --directory ]
     [ -g | --gnome ]
@@ -380,7 +389,7 @@ SWAY=0
 MONITORS=1
 
 # SC2034
-PARSED_ARGUMENTS=$(getopt -a -n "$0" -o h:w:s:l:b:r:a:c:d:m:pLknxgy:sa --long search:,height:,width:,fehbg:,fehopt:,artist:,subreddit:,directory:,monitors:,termcolor:,lighwal:,kde,nitrogen,xfce,gnome,sway,save -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n "$0" -o h:w:s:l:b:r:a:c:d:m:pLknxgy:sabi --long search:,height:,width:,fehbg:,bing,fehopt:,artist:,subreddit:,directory:,monitors:,termcolor:,lighwal:,kde,nitrogen,xfce,gnome,sway,save -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
@@ -392,6 +401,10 @@ while true; do
     -b | --fehbg)
         BGTYPE="$2"
         shift 2
+        ;;
+    -bi | --bing)
+        BING=1
+        shift
         ;;
     -s | --search)
         SEARCH="$2"
@@ -471,6 +484,8 @@ elif [[ "$LINK" = "reddit" || -n "$SUB" ]]; then
     reddit "$SUB"
 elif [[ "$LINK" = "deviantart" ]] || [[ -n "$ARTIST" ]]; then
     deviantart "$ARTIST"
+elif [[ -n "$BING" ]]; then
+    bing_daily
 elif [[ -n "$SAVE" ]]; then
     save_cmd
 else
