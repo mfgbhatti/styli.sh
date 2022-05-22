@@ -188,7 +188,6 @@ bing_daily() {
     JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1")
     URL=$(echo "$JSON" | jq '.images[0].url' | sed -e 's/^"//'  -e 's/"$//')
     IMAGE_URL="http://www.bing.com"${URL}
-    echo "$URL"
     wget -q -O "$WALLPAPER" "$IMAGE_URL"
 }
 
@@ -263,7 +262,7 @@ type_check() {
 }
 
 select_random_wallpaper() {
-    WALLPAPER=$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)
+    WALLPAPER="$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)"
 }
 
 sway_cmd() {
@@ -449,6 +448,7 @@ while true; do
         ;;
     -d | --directory)
         DIR="$2"
+        GNOME=1
         shift 2
         ;;
     -k | --kde)
