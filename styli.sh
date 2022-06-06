@@ -20,7 +20,9 @@ fi
 WALLPAPER="$CACHEDIR/wallpaper.jpg"
 
 save_cmd() {
-    cp "$WALLPAPER" "$HOME/Pictures/wallpaper$RANDOM.jpg"
+    SAVED_WALLPAPER="$HOME/Pictures/wallpapers/stylish-$RANDOM.jpg"
+    cp "$WALLPAPER" "$SAVED_WALLPAPER"
+    printf "Stylish saved current wallpaper to %s.\n" "$SAVED_WALLPAPER"
 }
 
 die() {
@@ -344,6 +346,7 @@ xfce_cmd() {
 gnome_cmd() {
     gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER"
     gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"
+    printf "Wallpaper is set.\n"
 }
 
 feh_cmd() {
