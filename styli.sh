@@ -207,14 +207,14 @@ unsplash() {
     if [[ -n "$SEARCH" ]]; then
         LINK="${LINK}/?$SEARCH"
     fi
-    wget --quite --output-document="$WALLPAPER" "$LINK"
+    wget --quiet --output-document="$WALLPAPER" "$LINK"
 }
 
 bing_daily() {
     JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1")
     URL=$(echo "$JSON" | jq '.images[0].url' | sed -e 's/^"//'  -e 's/"$//')
     IMAGE_URL="http://www.bing.com"${URL}
-    wget --quite --output-document="$WALLPAPER" "$IMAGE_URL"
+    wget --quiet --output-document="$WALLPAPER" "$IMAGE_URL"
 }
 
 deviantart() {
@@ -242,7 +242,7 @@ deviantart() {
     SIZE=${#URLS[@]}
     IDX=$((RANDOM % SIZE))
     TARGET_URL=${URLS[$IDX]}
-    wget --no-check-certificate --quite --directory-prefix=down --output-document="$WALLPAPER" "$TARGET_URL"
+    wget --no-check-certificate --quiet --directory-prefix=down --output-document="$WALLPAPER" "$TARGET_URL"
 }
 
 usage() {
