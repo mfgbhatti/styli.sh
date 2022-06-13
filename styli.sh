@@ -2,16 +2,45 @@
 # shellcheck disable=SC2120,SC2154,SC1090,SC2034
 LINK="https://source.unsplash.com/random/"
 
-if [[ -z ${XDG_CONFIG_HOME+x} ]]; then
+die() {
+    case $1 in
+    "no-sub")
+        MSG="Please install the subreddits file in $CONFDIR"
+        ;;
+    "mime")
+        MSG="MIME-Type missmatch. Downloaded file is not an image!"
+        ;;
+    "unexpect")
+        MSG="Unexpected option: $1 this should not happen."
+        ;;
+    "internet")
+        MSG="No internet connection, exiting stylish."
+        ;;
+    "not-valid")
+        MSG="The current subreddit is not valid."
+        ;;
+    *)
+        MSG="Unknown error."
+        ;;
+    esac
+
+    printf "ERR: %s\n" "$MSG" >&2
+    exit 0
+}
+
+if [[ -z ${XDG_CONFIG_HOME} ]]; then
     XDG_CONFIG_HOME="$HOME/.config"
 fi
-if [[ -z ${XDG_CACHE_HOME+x} ]]; then
+
+if [[ -z ${XDG_CACHE_HOME} ]]; then
     XDG_CACHE_HOME="$HOME/.cache"
 fi
+
 CONFDIR="${XDG_CONFIG_HOME}/styli.sh"
 if [[ ! -d "$CONFDIR" ]]; then
     mkdir -p "$CONFDIR"
 fi
+
 CACHEDIR="${XDG_CACHE_HOME}/styli.sh"
 if [[ ! -d "$CACHEDIR" ]]; then
     mkdir -p "$CACHEDIR"
@@ -25,10 +54,7 @@ save_cmd() {
     printf "Stylish saved current wallpaper to %s.\n" "$SAVED_WALLPAPER"
 }
 
-die() {
-    printf "ERR: %s\n" "$1" >&2
-    exit 1
-}
+
 # https://github.com/egeesin/alacritty-color-export
 # SC2120
 alacritty_change() {
@@ -130,7 +156,20 @@ printf "'%s' exported to '%s'\n" "$SRC" "$CFG"
 
 
 reddit() {
-    USERAGENT="thevinter"
+    if [[ -n "$1" ]]; then
+        SUB="$1"
+    else
+        if [[ ! -f "$CONFDIR/subreddits" ]]; then
+            die "no-sub"
+        fi
+        readarray SUBREDDITS <"$CONFDIR/subreddits"
+        a=${#SUBREDDITS[@]}
+        b=$((RANDOM % a))
+        SUB=${SUBREDDITS[$b]}
+        SUB="$(echo -e "$SUB" | tr -d '[:space:]')"
+    fi
+
+    USERAGENT="Mozilla/5.0 (X11; Arch Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.61 Safari/537.36"
     TIMEOUT=60
 
     SORT="$2"
@@ -143,32 +182,17 @@ reddit() {
         TOP_TIME=""
     fi
 
-    if [[ -n "$1" ]]; then
-        SUB="$1"
-    else
-        if [[ ! -f "$CONFDIR/subreddits" ]]; then
-            echo "Please install the subreddits file in $CONFDIR"
-            exit 2
-        fi
-        readarray SUBREDDITS <"$CONFDIR/subreddits"
-        a=${#SUBREDDITS[@]}
-        b=$((RANDOM % a))
-        SUB=${SUBREDDITS[$b]}
-        SUB="$(echo -e "$SUB" | tr -d '[:space:]')"
-    fi
-
     URL="https://www.reddit.com/r/$SUB/$SORT/.json?raw_json=1&t=$TOP_TIME"
-    CONTENT=$(wget -T "$TIMEOUT" -U "$USERAGENT" -q -O - "$URL")
+    CONTENT=$(wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --quiet -O - "$URL")
     mapfile -t URLS <<< "$(echo -n "$CONTENT" | jq -r '.data.children[]|select(.data.post_hint|test("image")?) | .data.preview.images[0].source.url')"
     wait # prevent spawning too many processes
     SIZE=${#URLS[@]}
     if [[ "$SIZE" -eq 0 ]]; then
-        echo The current subreddit is not valid.
-        exit 1
+        die "not-valid"
     fi
     IDX=$((RANDOM % SIZE))
     TARGET_URL=${URLS[$IDX]}
-    wget -T $TIMEOUT -U "$USERAGENT" --no-check-certificate -q -P down -O "$WALLPAPER" "$TARGET_URL" 2>/dev/null
+    wget --timeout=$TIMEOUT --user-agent="$USERAGENT" --no-check-certificate --quiet --directory-prefix=down --output-document="$WALLPAPER" "$TARGET_URL"
 }
 
 unsplash() {
@@ -183,14 +207,14 @@ unsplash() {
     if [[ -n "$SEARCH" ]]; then
         LINK="${LINK}/?$SEARCH"
     fi
-    wget -q -O "$WALLPAPER" "$LINK"
+    wget --quite --output-document="$WALLPAPER" "$LINK"
 }
 
 bing_daily() {
     JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1")
     URL=$(echo "$JSON" | jq '.images[0].url' | sed -e 's/^"//'  -e 's/"$//')
     IMAGE_URL="http://www.bing.com"${URL}
-    wget -q -O "$WALLPAPER" "$IMAGE_URL"
+    wget --quite --output-document="$WALLPAPER" "$IMAGE_URL"
 }
 
 deviantart() {
@@ -218,7 +242,7 @@ deviantart() {
     SIZE=${#URLS[@]}
     IDX=$((RANDOM % SIZE))
     TARGET_URL=${URLS[$IDX]}
-    wget --no-check-certificate -q -P down -O "$WALLPAPER" "$TARGET_URL" &>/dev/null
+    wget --no-check-certificate --quite --directory-prefix=down --output-document="$WALLPAPER" "$TARGET_URL"
 }
 
 usage() {
@@ -226,24 +250,24 @@ usage() {
     styli.sh option <string>
     Following options can be used
 
-    [ -a | --artist <deviant artist> ]
-    [ -b | --fehbg <feh bg opt> ]
+    [ -a  | --artist <deviant artist> ]
+    [ -b  | --fehbg <feh bg opt> ]
     [ -bi | --bing <bing daily wallpaper>]
-    [ -c | --fehopt <feh opt> ]
-    [ -d | --directory ]
-    [ -g | --gnome ]
-    [ -h | --height <height> ]
-    [ -k | --kde ]
-    [ -l | --link <source> ]
-    [ -m | --monitors <monitor count (nitrogen)> ]
-    [ -n | --nitrogen ]
-    [ -r | --subreddit <subreddit> ]
-    [ -s | --search <string> ]
+    [ -c  | --fehopt <feh opt> ]
+    [ -d  | --directory ]
+    [ -g  | --gnome ]
+    [ -h  | --height <height> ]
+    [ -k  | --kde ]
+    [ -l  | --link <source> ]
+    [ -m  | --monitors <monitor count (nitrogen)> ]
+    [ -n  | --nitrogen ]
+    [ -r  | --subreddit <subreddit> ]
+    [ -s  | --search <string> ]
     [ -sa | --save <Save current image to pictures directory> ]
-    [ -w | --width <width> ]
-    [ -x | --xfce ] 
-    "
-    exit 2
+    [ -w  | --width <width> ]
+    [ -x  | --xfce ] 
+    \n"
+    exit 0
 }
 
 type_check() {
@@ -258,13 +282,14 @@ type_check() {
         fi
     done
     if [[ "$PROCEED" -eq 0 ]]; then
-        echo "MIME-Type missmatch. Downloaded file is not an image!"
+        die "mime"
         exit 0
     fi
 }
 
 select_random_wallpaper() {
     WALLPAPER="$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)"
+    GNOME=1
 }
 
 sway_cmd() {
@@ -346,7 +371,6 @@ xfce_cmd() {
 gnome_cmd() {
     gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER"
     gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"
-    printf "Wallpaper is set.\n"
 }
 
 feh_cmd() {
@@ -451,7 +475,6 @@ while true; do
         ;;
     -d | --directory)
         DIR="$2"
-        GNOME=1
         shift 2
         ;;
     -k | --kde)
@@ -475,38 +498,49 @@ while true; do
         break
         ;;
     *)
-        echo "Unexpected option: $1 this should not happen."
+        die "unexpect"
         usage
         ;;
     esac
 done
 
-if [[ -n "$DIR" ]]; then
-    select_random_wallpaper
-elif [[ "$LINK" = "reddit" || -n "$SUB" ]]; then
-    reddit "$SUB"
-elif [[ "$LINK" = "deviantart" ]] || [[ -n "$ARTIST" ]]; then
-    deviantart "$ARTIST"
-elif [[ -n "$BING" ]]; then
-    bing_daily
-elif [[ -n "$SAVE" ]]; then
-    save_cmd
-else
-    unsplash
-fi
+run_stylish() {
+    if [[ -n "$DIR" ]]; then
+        select_random_wallpaper
+    elif [[ "$LINK" = "reddit" || -n "$SUB" ]]; then
+        reddit "$SUB"
+    elif [[ "$LINK" = "deviantart" ]] || [[ -n "$ARTIST" ]]; then
+        deviantart "$ARTIST"
+    elif [[ -n "$BING" ]]; then
+        bing_daily
+    elif [[ -n "$SAVE" ]]; then
+        save_cmd
+    else
+        unsplash
+    fi
 
-type_check
+    type_check
 
-if [[ $KDE -eq 1 ]]; then
-    kde_cmd
-elif [[ $XFCE -eq 1 ]]; then
-    xfce_cmd
-elif [[ $GNOME -eq 1 ]]; then
-    gnome_cmd
-elif [[ $NITROGEN -eq 1 ]]; then
-    nitrogen_cmd
-elif [[ $SWAY -eq 1 ]]; then
-    sway_cmd
+    if [[ $KDE -eq 1 ]]; then
+        kde_cmd
+    elif [[ $XFCE -eq 1 ]]; then
+        xfce_cmd
+    elif [[ $GNOME -eq 1 ]]; then
+        gnome_cmd
+    elif [[ $NITROGEN -eq 1 ]]; then
+        nitrogen_cmd
+    elif [[ $SWAY -eq 1 ]]; then
+        sway_cmd
+    else
+        feh_cmd 2>/dev/null
+    fi
+    printf "Background is updated.\n"
+}
+
+
+if wget --quiet --spider http://google.com; then
+    #echo "Online"
+    run_stylish
 else
-    feh_cmd 2>/dev/null
+    die "internet"
 fi
