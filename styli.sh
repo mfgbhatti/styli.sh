@@ -47,13 +47,83 @@ if [[ ! -d "$CACHEDIR" ]]; then
 fi
 
 WALLPAPER="$CACHEDIR/wallpaper.jpg"
+TEMP_WALL="$CACHEDIR/temp"
+
+usage() {
+    echo -ne "Usage:
+    styli.sh option <string>
+    Following options can be used
+
+    [ -a  | --artist <deviant artist> ]
+    [ -b  | --fehbg <feh bg opt> ]
+    [ -bi | --bing <bing daily wallpaper>]
+    [ -c  | --fehopt <feh opt> ]
+    [ -d  | --directory ]
+    [ -g  | --gnome ]
+    [ -h  | --height <height> ]
+    [ -k  | --kde ]
+    [ -l  | --link <source> ]
+    [ -m  | --monitors <monitor count (nitrogen)> ]
+    [ -n  | --nitrogen ]
+    [ -r  | --subreddit <subreddit> <sort(top,hot)> < ]
+    [ -s  | --search <string> ]
+    [ -sa | --save <Save current image to pictures directory> ]
+    [ -w  | --width <width> ]
+    [ -x  | --xfce ] 
+    \n"
+    exit 0
+}
+
+type_check() {
+    MIME_TYPES=("image/bmp" "image/jpeg" "image/gif" "image/png" "image/heic")
+    PROCEED=0
+
+    for REQUIREDTYPE in "${MIME_TYPES[@]}"; do
+        IMAGETYPE=$(file --mime-type "$TEMP_WALL" | awk '{print $2}')
+        if [[ "$IMAGETYPE" =~ $REQUIREDTYPE ]]; then
+            PROCEED=1
+            break
+        fi
+    done
+    if [[ "$PROCEED" -eq 0 ]]; then
+        die "mime"
+        exit 0
+    else
+        cp "$TEMP_WALL" "$WALLPAPER"
+    fi
+}
 
 save_cmd() {
     SAVED_WALLPAPER="$HOME/Pictures/wallpapers/stylish-$RANDOM.jpg"
     cp "$WALLPAPER" "$SAVED_WALLPAPER"
-    printf "Stylish saved current wallpaper to %s.\n" "$SAVED_WALLPAPER"
 }
 
+unsplash() {
+    local SEARCH="${SEARCH// /_}"
+    if [[ -n "$HEIGHT" || -n "$WIDTH" ]]; then
+        # keeping {} for $LINK value
+        LINK="${LINK}$WIDTHx$HEIGHT"
+    else
+        LINK="${LINK}1920x1080"
+    fi
+
+    if [[ -n "$SEARCH" ]]; then
+        LINK="${LINK}/?$SEARCH"
+    fi
+    wget --quiet --output-document="$TEMP_WALL" "$LINK"
+}
+
+bing_daily() {
+    JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1")
+    URL=$(echo "$JSON" | jq '.images[0].url' | sed -e 's/^"//'  -e 's/"$//')
+    IMAGE_URL="http://www.bing.com"${URL}
+    wget --quiet --output-document="$TEMP_WALL" "$IMAGE_URL"
+}
+
+select_random_wallpaper() {
+    WALLPAPER="$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)"
+    GNOME=1
+}
 
 # https://github.com/egeesin/alacritty-color-export
 # SC2120
@@ -167,6 +237,7 @@ reddit() {
         b=$((RANDOM % a))
         SUB=${SUBREDDITS[$b]}
         SUB="$(echo -e "$SUB" | tr -d '[:space:]')"
+        # echo "$SUB"
     fi
 
     USERAGENT="Mozilla/5.0 (X11; Arch Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.61 Safari/537.36"
@@ -182,40 +253,21 @@ reddit() {
         TOP_TIME=""
     fi
 
-    URL="https://www.reddit.com/r/$SUB/$SORT/.json?raw_json=1&t=$TOP_TIME"
+    URL="https://www.reddit.com/r/$SUB/$SORT.json?raw_json=1&t=$TOP_TIME"
+    # echo "$URL"
     CONTENT=$(wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --quiet -O - "$URL")
     mapfile -t URLS <<< "$(echo -n "$CONTENT" | jq -r '.data.children[]|select(.data.post_hint|test("image")?) | .data.preview.images[0].source.url')"
     wait # prevent spawning too many processes
     SIZE=${#URLS[@]}
+    # echo "${URLS[@]}"
     if [[ "$SIZE" -eq 0 ]]; then
         die "not-valid"
     fi
     IDX=$((RANDOM % SIZE))
     TARGET_URL=${URLS[$IDX]}
-    wget --timeout=$TIMEOUT --user-agent="$USERAGENT" --no-check-certificate --quiet --directory-prefix=down --output-document="$WALLPAPER" "$TARGET_URL"
+    wget --timeout=$TIMEOUT --user-agent="$USERAGENT" --no-check-certificate --quiet --directory-prefix=down --output-document="$TEMP_WALL" "$TARGET_URL"
 }
 
-unsplash() {
-    local SEARCH="${SEARCH// /_}"
-    if [[ -n "$HEIGHT" || -n "$WIDTH" ]]; then
-        # keeping {} for $LINK value
-        LINK="${LINK}$WIDTHx$HEIGHT"
-    else
-        LINK="${LINK}1920x1080"
-    fi
-
-    if [[ -n "$SEARCH" ]]; then
-        LINK="${LINK}/?$SEARCH"
-    fi
-    wget --quiet --output-document="$WALLPAPER" "$LINK"
-}
-
-bing_daily() {
-    JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1")
-    URL=$(echo "$JSON" | jq '.images[0].url' | sed -e 's/^"//'  -e 's/"$//')
-    IMAGE_URL="http://www.bing.com"${URL}
-    wget --quiet --output-document="$WALLPAPER" "$IMAGE_URL"
-}
 
 deviantart() {
     CLIENT_ID="16531"
@@ -242,54 +294,7 @@ deviantart() {
     SIZE=${#URLS[@]}
     IDX=$((RANDOM % SIZE))
     TARGET_URL=${URLS[$IDX]}
-    wget --no-check-certificate --quiet --directory-prefix=down --output-document="$WALLPAPER" "$TARGET_URL"
-}
-
-usage() {
-    echo -ne "Usage:
-    styli.sh option <string>
-    Following options can be used
-
-    [ -a  | --artist <deviant artist> ]
-    [ -b  | --fehbg <feh bg opt> ]
-    [ -bi | --bing <bing daily wallpaper>]
-    [ -c  | --fehopt <feh opt> ]
-    [ -d  | --directory ]
-    [ -g  | --gnome ]
-    [ -h  | --height <height> ]
-    [ -k  | --kde ]
-    [ -l  | --link <source> ]
-    [ -m  | --monitors <monitor count (nitrogen)> ]
-    [ -n  | --nitrogen ]
-    [ -r  | --subreddit <subreddit> ]
-    [ -s  | --search <string> ]
-    [ -sa | --save <Save current image to pictures directory> ]
-    [ -w  | --width <width> ]
-    [ -x  | --xfce ] 
-    \n"
-    exit 0
-}
-
-type_check() {
-    MIME_TYPES=("image/bmp" "image/jpeg" "image/gif" "image/png" "image/heic")
-    PROCEED=0
-
-    for REQUIREDTYPE in "${MIME_TYPES[@]}"; do
-        IMAGETYPE=$(file --mime-type "$WALLPAPER" | awk '{print $2}')
-        if [[ "$IMAGETYPE" =~ $REQUIREDTYPE ]]; then
-            PROCEED=1
-            break
-        fi
-    done
-    if [[ "$PROCEED" -eq 0 ]]; then
-        die "mime"
-        exit 0
-    fi
-}
-
-select_random_wallpaper() {
-    WALLPAPER="$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)"
-    GNOME=1
+    wget --no-check-certificate --quiet --directory-prefix=down --output-document="$TEMP_WALL" "$TARGET_URL"
 }
 
 sway_cmd() {
@@ -415,7 +420,7 @@ SWAY=0
 MONITORS=1
 
 # SC2034
-PARSED_ARGUMENTS=$(getopt -a -n "$0" -o h:w:s:l:b:r:a:c:d:m:pLknxgy:sabi --long search:,height:,width:,fehbg:,bing,fehopt:,artist:,subreddit:,directory:,monitors:,termcolor:,lighwal:,kde,nitrogen,xfce,gnome,sway,save -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n "$0" -o h:w:s:l:b:a:c:d:m:r:pLknxgy:sabi --long search:,height:,width:,fehbg:,bing,fehopt:,artist:,subreddit:,directory:,monitors:,termcolor:,lighwal:,kde,nitrogen,xfce,gnome,sway,save -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
@@ -454,7 +459,6 @@ while true; do
         ;;
     -r | --subreddit)
         SUB="$2"
-        gnome_cmd
         shift 2
         ;;
     -a | --artist)
@@ -507,34 +511,27 @@ done
 run_stylish() {
     if [[ -n "$DIR" ]]; then
         select_random_wallpaper
-    elif [[ "$LINK" = "reddit" || -n "$SUB" ]]; then
-        reddit "$SUB"
-    elif [[ "$LINK" = "deviantart" ]] || [[ -n "$ARTIST" ]]; then
-        deviantart "$ARTIST"
-    elif [[ -n "$BING" ]]; then
-        bing_daily
-    elif [[ -n "$SAVE" ]]; then
+    elif [[ "$SAVE" -eq "1" ]]; then
         save_cmd
+        printf "Stylish saved current wallpaper to %s.\n" "$SAVED_WALLPAPER"
     else
-        unsplash
-    fi
-
-    type_check
-
-    if [[ $KDE -eq 1 ]]; then
-        kde_cmd
-    elif [[ $XFCE -eq 1 ]]; then
-        xfce_cmd
-    elif [[ $GNOME -eq 1 ]]; then
-        gnome_cmd
-    elif [[ $NITROGEN -eq 1 ]]; then
-        nitrogen_cmd
-    elif [[ $SWAY -eq 1 ]]; then
-        sway_cmd
-    else
+        [[ "$BING" -eq "1" ]] && bing_daily
+        [[ -n "$SEARCH" ]] && unsplash
+        [[ -n "$ARTIST" ]] && deviantart "$ARTIST"
+        if [[ -n "$SUB" ]]; then 
+            reddit "$SUB"
+        # else
+        #     reddit
+        fi
+        type_check
+        [[ "$KDE" -eq "1" ]] && kde_cmd
+        [[ "$XFCE" -eq "1" ]] && xfce_cmd
+        [[ "$GNOME" -eq "1" ]] && gnome_cmd
+        [[ "$NITROGEN" -eq "1" ]] && nitrogen_cmd
+        [[ "$SWAY" -eq "1" ]] && sway_cmd
         feh_cmd 2>/dev/null
+        printf "Background is updated.\n"
     fi
-    printf "Background is updated.\n"
 }
 
 
