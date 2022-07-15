@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-#!/usr/bin/env bash
 # shellcheck disable=SC2120,SC2154,SC1090,SC2034
-LINK="https://source.unsplash.com/random/"
 
 die() {
     case $1 in
@@ -49,6 +47,7 @@ fi
 
 WALLPAPER="$CACHEDIR/wallpaper.jpg"
 TEMP_WALL="$CACHEDIR/temp"
+UNSPLASH="https://source.unsplash.com/random/"
 
 usage() {
     echo -ne "Usage:
@@ -56,11 +55,12 @@ usage() {
     Following options can be used
 
     [ -a  | --artist <deviant artist> ]
-    [ -b  | --bing <bing daily wallpaper>]
+    [ -b  | --bing <bing daily wallpaper> ]
     [ -d  | --directory ]
     [ -g  | --gnome ]
     [ -h  | --help ]
     [ -l  | --link <source> ]
+    [ -p  | --picsum <images on picusm> ]
     [ -r  | --subreddit <subreddit> <sort(top,hot)> ]
     [ -s  | --search <string> ]
     [ -sa | --save <Save current image to pictures directory> ]
@@ -87,31 +87,45 @@ type_check() {
 }
 
 gnome_cmd() {
-    gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER"
-    gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"
+    if ! gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER"; then
+        printf "Stylish is not able to find gsettings.\n"
+    fi
+    if ! gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"; then
+        printf "Stylish is not able to find gsettings.\n"
+
+    fi
     printf "Stylish updated your wallpaper!\n"
 }
 
 putup_wallpaer() {
+    USERAGENT="Mozilla/5.0 (X11; Arch x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
+    TIMEOUT=60
+    wget --timeout=$TIMEOUT --user-agent="$USERAGENT" --no-check-certificate --quiet  --output-document="$TEMP_WALL" "$TARGET_URL"
     type_check
     gnome_cmd
 }
 
 save_cmd() {
-    SAVED_WALLPAPER="$HOME/Pictures/wallpapers/stylish-$RANDOM.jpg"
+    DEST="$HOME/Pictures/wallpapers"
+    SAVED_WALLPAPER="$DEST/stylish-$RANDOM.jpg"
+    WALLPAPER=$(gsettings get org.gnome.desktop.background picture-uri | sed "s/file:\/\///;s/'//g")
     if [[ -f "$WALLPAPER" ]]; then
-        if [[ -d "$HOME/Pictures" ]]; then
-            if [[ ! -f "$HOME/Pictures/wallpapers/$(basename "$SAVED_WALLPAPER")" ]]; then
-                cp "$WALLPAPER" "$SAVED_WALLPAPER"
-                printf "Stylish saved current wallpaper to %s.\n" "$SAVED_WALLPAPER"
+        if [[ -d "$DEST" ]]; then
+            if [[ -w "$DEST" ]]; then
+                if [[ ! -f "$DEST/$(basename "$SAVED_WALLPAPER")" ]]; then
+                    cp "$WALLPAPER" "$SAVED_WALLPAPER"
+                    printf "Stylish saved current wallpaper to %s.\n" "$SAVED_WALLPAPER"
+                else
+                    printf "%s already exists in %s\n" "$(basename "$SAVED_WALLPAPER")" "$DEST"
+                fi
             else
-                printf "%s already exists in $HOME/Pictures\n" "$(basename "$SAVED_WALLPAPER")"
+                printf "You do not have write permissions.\n"
             fi
         else
-            printf "Pictures directory is not found. Please create it in %s.\n" "$HOME"
+            printf "Stylish is unable to locate %s.\n" "$DEST"
         fi
     else
-        printf "%s is not found.\n" "$WALLPAPER"
+        printf "Wallpaper is not found are you using gnome?\n"
     fi
 }
 
@@ -119,35 +133,73 @@ unsplash() {
     SEARCH="${SEARCH// /_}"
     if [[ -n "$HEIGHT" || -n "$WIDTH" ]]; then
         # keeping {} for $LINK value
-        LINK="${LINK}$WIDTHx$HEIGHT"
+        TARGET_URL="${UNSPLASH}$WIDTHx$HEIGHT"
     else
-        LINK="${LINK}1920x1080"
+        TARGET_URL="${UNSPLASH}1920x1080"
     fi
 
     if [[ -n "$SEARCH" ]]; then
-        LINK="${LINK}/?$SEARCH"
+        TARGET_URL="${UNSPLASH}/?$SEARCH"
     fi
-    wget --quiet --output-document="$TEMP_WALL" "$LINK"
     putup_wallpaer
 }
 
 bing_daily() {
     JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1")
     URL=$(echo "$JSON" | jq '.images[0].url' | sed -e 's/^"//'  -e 's/"$//')
-    IMAGE_URL="http://www.bing.com"${URL}
-    wget --quiet --output-document="$TEMP_WALL" "$IMAGE_URL"
+    TARGET_URL="http://www.bing.com"${URL}
+    putup_wallpaer
+}
+
+daily_picsum() {
+    JSON=$(curl --silent "https://picsum.photos/v2/list?limit=100")
+    mapfile -t URLS <<< "$(echo "$JSON" | jq '.[] | .download_url' | sed 's/\"//g')"
+    wait # prevent spawning too many processes
+    SIZE=${#URLS[@]}
+    if [[ "$SIZE" -eq 0 ]]; then
+        die "not-valid"
+    fi
+    IDX=$((RANDOM % SIZE))
+    TARGET_URL=${URLS[$IDX]}
     putup_wallpaer
 }
 
 select_random_wallpaper() {
-    WALLPAPER="$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)"
-    #check if file is present
-    if [[ -f "$WALLPAPER" ]]; then
-        gnome_cmd
-        printf "Stylish set %s.\n" "$(basename "$WALLPAPER")"
+    do_wallpaper() {
+        WALLPAPER="$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)"
+        if [[ -f "$WALLPAPER" ]]; then
+            gnome_cmd
+        else
+            printf "No wallpaper found in %s\n" "$DIR"
+        fi
+    }
+
+    if [[ "$DIR" =~ ^/ ]]; then
+        if [[ -d "$DIR" ]]; then
+            if [[ -w "$DIR" ]]; then
+                do_wallpaper
+            else
+                printf "You don't have permissions to %s\n" "$DIR"
+            fi
+        else
+            printf "Invalid directory: %s\n" "$DIR"
+        fi
     else
-        printf "No wallpaper found in %s\n" "$DIR"
-        exit 1
+        read -r -p "Is $DIR in your home directory? [y/N] " RESPONSE
+        case $RESPONSE in
+        y | Y | yes | YES)
+            DIR="$HOME/$DIR"
+            do_wallpaper
+            ;;
+        n | N | no | NO)
+            read -r -p "Please enter a full or absolute path.\n" OPTS
+            DIR="$OPTS"
+            do_wallpaper
+            ;;
+        *)
+            die "invalid"
+            ;;
+        esac
     fi
 }
 
@@ -166,9 +218,6 @@ reddit() {
         # echo "$SUB"
     fi
 
-    USERAGENT="Mozilla/5.0 (X11; Arch Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.61 Safari/537.36"
-    TIMEOUT=60
-
     SORT="$2"
     TOP_TIME="$3"
     if [[ -z "$SORT" ]]; then
@@ -179,19 +228,18 @@ reddit() {
         TOP_TIME=""
     fi
 
+    USERAGENT="Mozilla/5.0 (X11; Arch Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.61 Safari/537.36"
+    TIMEOUT=60
     URL="https://www.reddit.com/r/$SUB/$SORT.json?raw_json=1&t=$TOP_TIME"
-    # echo "$URL"
     CONTENT=$(wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --quiet -O - "$URL")
     mapfile -t URLS <<< "$(echo -n "$CONTENT" | jq -r '.data.children[]|select(.data.post_hint|test("image")?) | .data.preview.images[0].source.url')"
     wait # prevent spawning too many processes
     SIZE=${#URLS[@]}
-    # echo "${URLS[@]}"
     if [[ "$SIZE" -eq 0 ]]; then
         die "not-valid"
     fi
     IDX=$((RANDOM % SIZE))
     TARGET_URL=${URLS[$IDX]}
-    wget --timeout=$TIMEOUT --user-agent="$USERAGENT" --no-check-certificate --quiet --directory-prefix=down --output-document="$TEMP_WALL" "$TARGET_URL"
     putup_wallpaer
 }
 
@@ -220,12 +268,11 @@ deviantart() {
     SIZE=${#URLS[@]}
     IDX=$((RANDOM % SIZE))
     TARGET_URL=${URLS[$IDX]}
-    wget --no-check-certificate --quiet --directory-prefix=down --output-document="$TEMP_WALL" "$TARGET_URL"
     putup_wallpaer
 }
 
 # SC2034
-PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:bhsa --long artist:,directory:,link:,subreddit:,search:,bing,gnome,help,save -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:bhsap --long artist:,directory:,link:,subreddit:,search:,bing,gnome,help,picsum,save -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
@@ -235,21 +282,21 @@ fi
 while true; do
     case "$1" in
     -a | --artist)
-        OPT=1
+        OPT=artist
         ARTIST="$2"
         shift 2
         ;;
     -b | --bing)
-        OPT=2
+        OPT=bing
         shift
         ;;
     -d | --directory)
-        OPT=3
+        OPT=directory
         DIR="$2"
         shift 2
         ;;
     -g | --gnome)
-        OPT=4
+        OPT=gnome # todo; user provide a file to set the wallpaper
         shift
         ;;
     -h | --help)
@@ -257,22 +304,26 @@ while true; do
         exit
         ;;
     -l | --link) # not implemented yet
-        OPT=5
+        OPT=link
         LINK="$2"
         shift 2
         ;;
+    -p | --picsum)
+        OPT=picsum
+        shift
+        ;;
     -r | --subreddit)
-        OPT=6
+        OPT=subreddit
         SUB="$2"
         shift 2
         ;;
     -s | --search)
-        OPT=7
+        OPT=search
         SEARCH="$2"
         shift 2
         ;;
     -sa | --save)
-        OPT=8
+        OPT=save
         SAVE=1
         shift
         ;;
@@ -289,28 +340,31 @@ done
 
 run_stylish() {
     case $OPT in
-    1)
+    artist)
         deviantart "$ARTIST"
         ;;
-    2)
+    bing)
         bing_daily
         ;;
-    3)
-        select_random_wallpaper
+    directory)
+        select_random_wallpaper "$DIR"
         ;;
-    4)
+    gnome)
         gnome_cmd
         ;;
-    5)
+    link)
         printf "Not implemented yet.\n"
         ;;
-    6)
+    picsum)
+        daily_picsum
+        ;;
+    subreddit)
         reddit "$SUB"
         ;;
-    7)
-        unsplash
+    search)
+        unsplash "$SEARCH"
         ;;
-    8)
+    save)
         save_cmd
         ;;
     *)
@@ -319,10 +373,18 @@ run_stylish() {
     esac
 }
 
+root_check() {
+    if [[ "$(id -u)" == "0" ]]; then
+        echo -ne "ERROR! Stylish must not be run under the 'root' user!\n"
+        exit 1
+    fi
+}
 
 if wget --quiet --spider http://google.com; then
     #echo "Online"
-    run_stylish
+    if root_check; then
+        run_stylish
+    fi
 else
     die "internet"
 fi
