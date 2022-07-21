@@ -1,31 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2120,SC2154,SC1090,SC2034
+#
 
-die() {
-    case $1 in
-    "no-sub")
-        MSG="Please install the subreddits file in $CONFDIR"
-        ;;
-    "mime")
-        MSG="MIME-Type missmatch. Downloaded file is not an image!"
-        ;;
-    "unexpect")
-        MSG="Unexpected option: $1 this should not happen."
-        ;;
-    "internet")
-        MSG="No internet connection, exiting stylish."
-        ;;
-    "not-valid")
-        MSG="The current subreddit is not valid."
-        ;;
-    *)
-        MSG="Unknown error."
-        ;;
-    esac
-
-    printf "ERR: %s\n" "$MSG" >&2
-    exit 0
-}
+# ┏━┳┓╋╋╋╋┏┳━┳┓
+# ┃━┫┗┳┳┳┓┣┫━┫┗┓
+# ┣━┃┏┫┃┃┗┫┣━┃┃┃
+# ┗━┻━╋┓┣━┻┻━┻┻┛
+# ╋╋╋╋┗━┛━━┛
 
 if [[ -z ${XDG_CONFIG_HOME} ]]; then
     XDG_CONFIG_HOME="$HOME/.config"
@@ -45,9 +26,76 @@ if [[ ! -d "$CACHEDIR" ]]; then
     mkdir -p "$CACHEDIR"
 fi
 
-WALLPAPER="$CACHEDIR/wallpaper.jpg"
-TEMP_WALL="$CACHEDIR/temp"
+CONFIG_FILE="$CONFDIR/stylish.conf"
+
+source_config() {
+    if [[ -f "$CONFIG_FILE" ]]; then
+        source "$CONFIG_FILE"
+    else
+        cat <<EOT >"$CONFIG_FILE"
+# ┏━┳┓╋╋╋╋┏┳━┳┓
+# ┃━┫┗┳┳┳┓┣┫━┫┗┓
+# ┣━┃┏┫┃┃┗┫┣━┃┃┃
+# ┗━┻━╋┓┣━┻┻━┻┻┛
+# ╋╋╋╋┗━┛━━┛
+# 
+# Configuration file for styli.sh
+# sourced from https://github.com/mfgbhatti/styli.sh
+# Please dont edit this file manually, instead edit main script
+# This file is automatically updated by styli.sh
+# 
+# different out errors / warnings
+die() {
+    case "\$1" in
+    "no-sub")
+        MSG="Please check the subreddits file in \$CONFIG_FILE"
+        ;;
+    "mime")
+        MSG="MIME-Type missmatch. Downloaded file is not an image!"
+        ;;
+    "unexpect")
+        MSG="Unexpected option: \$1 this should not happen."
+        ;;
+    "internet")
+        MSG="No internet connection, exiting stylish."
+        ;;
+    "not-valid")
+        MSG="The current subreddit is not valid."
+        ;;
+    *)
+        MSG="Unknown error."
+        ;;
+    esac
+
+    printf "ERR: %s\n" "\$MSG" >&2
+    exit 0
+}
+# setting options to use next time
+set_option() {
+    if grep -Eq "^\$1=.*?" "\$CONFIG_FILE"; then
+        sed -i -E "s/^\$1.*/\$1=\"\$2\"/" \$CONFIG_FILE
+    else
+        printf "%s=\"%s\"\n" "\$1" "\$2" >>"\$CONFIG_FILE"
+    fi
+}
+
+# permanant variables
+MIME_TYPES=("image/bmp" "image/jpeg" "image/gif" "image/png" "image/heic")
+DEST="\$HOME/Pictures/wallpapers"
+WALLPAPER="\$CACHEDIR/wallpaper.jpg"
+TEMP_WALL="\$CACHEDIR/temp"
+SAVED_WALLPAPER="\$DEST/stylish-\$RANDOM.jpg"
 UNSPLASH="https://source.unsplash.com/random/"
+GNOME_FILE="file://\$WALLPAPER"
+USERAGENT="Mozilla/5.0 (X11; Arch x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
+TIMEOUT="60"
+#------AUTO-UPDATED------#
+EXEC_TIME="1"
+BING_DATE="00000000"
+EOT
+        source "$CONFIG_FILE"
+    fi
+}
 
 usage() {
     echo -ne "Usage:
@@ -69,7 +117,6 @@ usage() {
 }
 
 type_check() {
-    MIME_TYPES=("image/bmp" "image/jpeg" "image/gif" "image/png" "image/heic")
     PROCEED=0
     for REQUIREDTYPE in "${MIME_TYPES[@]}"; do
         IMAGETYPE=$(file --mime-type "$TEMP_WALL" | awk '{print $2}')
@@ -87,10 +134,10 @@ type_check() {
 }
 
 gnome_cmd() {
-    if ! gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER"; then
+    if ! gsettings set org.gnome.desktop.background picture-uri "$GNOME_FILE"; then
         printf "Stylish is not able to find gsettings.\n"
     fi
-    if ! gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"; then
+    if ! gsettings set org.gnome.desktop.background picture-uri-dark "$GNOME_FILE"; then
         printf "Stylish is not able to find gsettings.\n"
 
     fi
@@ -98,16 +145,12 @@ gnome_cmd() {
 }
 
 putup_wallpaer() {
-    USERAGENT="Mozilla/5.0 (X11; Arch x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
-    TIMEOUT=60
-    wget --timeout=$TIMEOUT --user-agent="$USERAGENT" --no-check-certificate --quiet  --output-document="$TEMP_WALL" "$TARGET_URL"
+    wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --no-check-certificate --quiet --output-document="$TEMP_WALL" "$TARGET_URL"
     type_check
     gnome_cmd
 }
 
 save_cmd() {
-    DEST="$HOME/Pictures/wallpapers"
-    SAVED_WALLPAPER="$DEST/stylish-$RANDOM.jpg"
     WALLPAPER=$(gsettings get org.gnome.desktop.background picture-uri | sed "s/file:\/\///;s/'//g")
     if [[ -f "$WALLPAPER" ]]; then
         if [[ -d "$DEST" ]]; then
@@ -145,15 +188,41 @@ unsplash() {
 }
 
 bing_daily() {
-    JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1")
-    URL=$(echo "$JSON" | jq '.images[0].url' | sed -e 's/^"//'  -e 's/"$//')
+    BING_JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8")
+    if [[ -z "$1" ]]; then
+        URL=$(echo "$BING_JSON" | jq '.images[0].url' | sed -e 's/^"//' -e 's/"$//')
+    else
+        mapfile -t URLS <<<"$(echo "$BING_JSON" | jq '.images[].url' | sed -E 's/^"//;s/"$//')"
+        mapfile -t DATES <<<"$(echo "$BING_JSON" | jq '.images[].startdate' | sed -E 's/^"//;s/"$//')"
+        while [ "$EXEC_TIME" -le "${#URLS[@]}" ]; do #8
+            if [[ "$EXEC_TIME" -eq "1" ]]; then
+                set_option "BING_DATE" "${DATES[$EXEC_TIME]}"
+                URL="${URLS[$EXEC_TIME]}"
+                EXEC_TIME=$((EXEC_TIME + 1))
+                set_option "EXEC_TIME" "$EXEC_TIME"
+                break
+            elif [[ "$EXEC_TIME" -gt "1" && "$EXEC_TIME" -lt "8" ]]; then
+                NEW_DATE=$((BING_DATE - 1))
+                set_option "BING_DATE" "$NEW_DATE"
+                EXEC_TIME=$((EXEC_TIME + 1))
+                set_option "EXEC_TIME" "$EXEC_TIME"
+                URL="${URLS[$EXEC_TIME]}"
+                break
+            elif [[ "$EXEC_TIME" -eq "8" ]]; then
+                set_option "BING_DATE" "${DATES[1]}"
+                set_option "EXEC_TIME" "1"
+                URL="${URLS[1]}"
+                break
+            fi
+        done
+    fi
     TARGET_URL="http://www.bing.com"${URL}
     putup_wallpaer
 }
 
 daily_picsum() {
-    JSON=$(curl --silent "https://picsum.photos/v2/list?limit=100")
-    mapfile -t URLS <<< "$(echo "$JSON" | jq '.[] | .download_url' | sed 's/\"//g')"
+    PICSUM_JSON=$(curl --silent "https://picsum.photos/v2/list?limit=100")
+    mapfile -t URLS <<<"$(echo "$PICSUM_JSON" | jq '.[] | .download_url' | sed 's/\"//g')"
     wait # prevent spawning too many processes
     SIZE=${#URLS[@]}
     if [[ "$SIZE" -eq 0 ]]; then
@@ -223,16 +292,13 @@ reddit() {
     if [[ -z "$SORT" ]]; then
         SORT="hot"
     fi
-
+    URL="https://www.reddit.com/r/$SUB/$SORT.json?raw_json=1&t=$TOP_TIME"
+    CONTENT=$(wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --quiet -O - "$REDDIT_URL")
     if [[ -z "$TOP_TIME" ]]; then
         TOP_TIME=""
     fi
 
-    USERAGENT="Mozilla/5.0 (X11; Arch Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.61 Safari/537.36"
-    TIMEOUT=60
-    URL="https://www.reddit.com/r/$SUB/$SORT.json?raw_json=1&t=$TOP_TIME"
-    CONTENT=$(wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --quiet -O - "$URL")
-    mapfile -t URLS <<< "$(echo -n "$CONTENT" | jq -r '.data.children[]|select(.data.post_hint|test("image")?) | .data.preview.images[0].source.url')"
+    mapfile -t URLS <<<"$(echo -n "$CONTENT" | jq -r '.data.children[]|select(.data.post_hint|test("image")?) | .data.preview.images[0].source.url')"
     wait # prevent spawning too many processes
     SIZE=${#URLS[@]}
     if [[ "$SIZE" -eq 0 ]]; then
@@ -264,7 +330,7 @@ deviantart() {
         URL="https://www.deviantart.com/api/v1/oauth2/browse/topic?limit=24&topic=${TOPICS[$RAND]}"
     fi
     CONTENT=$(curl --silent -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json" -H "Content-Type: application/json" "$URL")
-    mapfile -t URLS <<< "$(echo -n "$CONTENT" | jq -r '.results[].content.src')"
+    mapfile -t URLS <<<"$(echo -n "$CONTENT" | jq -r '.results[].content.src')"
     SIZE=${#URLS[@]}
     IDX=$((RANDOM % SIZE))
     TARGET_URL=${URLS[$IDX]}
@@ -272,7 +338,7 @@ deviantart() {
 }
 
 # SC2034
-PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:bhsap --long artist:,directory:,link:,subreddit:,search:,bing,gnome,help,picsum,save -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:bhppbsa --long artist:,directory:,link:,subreddit:,search:,bing,help,prebing,picsum,save -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
@@ -303,13 +369,17 @@ while true; do
         usage
         exit
         ;;
-    -l | --link) # not implemented yet
-        OPT=link
+    -u | --url) # not implemented yet
+        OPT=url
         LINK="$2"
         shift 2
         ;;
     -p | --picsum)
         OPT=picsum
+        shift
+        ;;
+    -pb | --prebing)
+        OPT=prebing
         shift
         ;;
     -r | --subreddit)
@@ -352,8 +422,11 @@ run_stylish() {
     gnome)
         gnome_cmd
         ;;
-    link)
+    url)
         printf "Not implemented yet.\n"
+        ;;
+    prebing)
+        bing_daily "pre"
         ;;
     picsum)
         daily_picsum
@@ -383,6 +456,7 @@ root_check() {
 if wget --quiet --spider http://google.com; then
     #echo "Online"
     if root_check; then
+        source_config
         run_stylish
     fi
 else
