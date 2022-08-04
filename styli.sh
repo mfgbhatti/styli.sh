@@ -83,10 +83,15 @@ set_option() {
 MIME_TYPES=("image/bmp" "image/jpeg" "image/gif" "image/png" "image/heic")
 DEST="\$HOME/Pictures/wallpapers"
 WALLPAPER="\$CACHEDIR/wallpaper.jpg"
-TEMP_WALL="\$CACHEDIR/temp"
+TEMP_WALL="\$CACHEDIR/temp.jpg"
 SAVED_WALLPAPER="\$DEST/stylish-\$RANDOM.jpg"
 UNSPLASH="https://source.unsplash.com/random/"
 GNOME_FILE="file://\$WALLPAPER"
+SUBS="\$CONFDIR/subreddits.conf"
+BING_URL="http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8"
+BING_CACHE="\$CACHEDIR/bing.cache"
+PICSUM_URL="https://picsum.photos/v2/list?limit=100"
+PICSUM_CACHE="\$CACHEDIR/picsum.cache"
 USERAGENT="Mozilla/5.0 (X11; Arch x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
 TIMEOUT="60"
 #------AUTO-UPDATED------#
@@ -96,10 +101,27 @@ EOT
         source "$CONFIG_FILE"
     fi
 }
+write_subs() {
+    cat <<EOT >"$SUBS"
+EarthPorn
+CityPorn
+SkyPorn
+WeatherPorn
+BotanicalPorn
+LakePorn
+VillagePorn
+BeachPorn
+WaterPorn
+SpacePorn
+EOT
+}
+
 
 usage() {
     echo -ne "Usage:
     styli.sh option <string>
+    styli.sh config file is located at .config/styli.sh/stylish.conf
+    for subreddits use file at .config/styli.sh/subreddits.conf
     Following options can be used
 
     [ -a  | --artist <deviant artist> ]
@@ -109,7 +131,7 @@ usage() {
     [ -h  | --help ]
     [ -l  | --link <source> ]
     [ -p  | --picsum <images on picusm> ]
-    [ -r  | --subreddit <subreddit> <sort(top,hot)> ]
+    [ -r  | --subreddit <subreddit> ]
     [ -s  | --search <string> ]
     [ -sa | --save <Save current image to pictures directory> ]
     \n"
@@ -132,7 +154,12 @@ type_check() {
         cp "$TEMP_WALL" "$WALLPAPER"
     fi
 }
-
+do_download() {
+    find "$(dirname "$2")" -name "$(basename "$2")" -mmin +120 -exec rm {} \; 2>/dev/null
+    if [ ! -f "$2" ]; then
+        wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --no-check-certificate --quiet --output-document="$2" "$1"
+    fi
+}
 gnome_cmd() {
     if ! gsettings set org.gnome.desktop.background picture-uri "$GNOME_FILE"; then
         printf "Stylish is not able to find gsettings.\n"
@@ -188,12 +215,12 @@ unsplash() {
 }
 
 bing_daily() {
-    BING_JSON=$(curl --silent "http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8")
+    do_download "$BING_URL" "$BING_CACHE"
     if [[ -z "$1" ]]; then
-        URL=$(echo "$BING_JSON" | jq '.images[0].url' | sed -e 's/^"//' -e 's/"$//')
+        URL=$(jq '.images[0].url' <"$BING_CACHE" | sed -e 's/^"//' -e 's/"$//')
     else
-        mapfile -t URLS <<<"$(echo "$BING_JSON" | jq '.images[].url' | sed -E 's/^"//;s/"$//')"
-        mapfile -t DATES <<<"$(echo "$BING_JSON" | jq '.images[].startdate' | sed -E 's/^"//;s/"$//')"
+        mapfile -t URLS <<<"$(jq '.images[].url'  <"$BING_CACHE" | sed -E 's/^"//;s/"$//')"
+        mapfile -t DATES <<<"$(jq '.images[].startdate'  <"$BING_CACHE" | sed -E 's/^"//;s/"$//')"
         while [ "$EXEC_TIME" -le "${#URLS[@]}" ]; do #8
             if [[ "$EXEC_TIME" -eq "1" ]]; then
                 set_option "BING_DATE" "${DATES[$EXEC_TIME]}"
@@ -221,8 +248,8 @@ bing_daily() {
 }
 
 daily_picsum() {
-    PICSUM_JSON=$(curl --silent "https://picsum.photos/v2/list?limit=100")
-    mapfile -t URLS <<<"$(echo "$PICSUM_JSON" | jq '.[] | .download_url' | sed 's/\"//g')"
+    do_download "$PICSUM_URL" "$PICSUM_CACHE"
+    mapfile -t URLS <<<"$(jq '.[] | .download_url' <"$PICSUM_CACHE" | sed 's/\"//g')"
     wait # prevent spawning too many processes
     SIZE=${#URLS[@]}
     if [[ "$SIZE" -eq 0 ]]; then
@@ -276,15 +303,14 @@ reddit() {
     if [[ -n "$1" ]]; then
         SUB="$1"
     else
-        if [[ ! -f "$CONFDIR/subreddits" ]]; then
-            die "no-sub"
+        if [[ ! -f "$SUBS" ]]; then
+            write_subs
         fi
-        readarray SUBREDDITS <"$CONFDIR/subreddits"
+        readarray SUBREDDITS <"$SUBS"
         a=${#SUBREDDITS[@]}
         b=$((RANDOM % a))
         SUB=${SUBREDDITS[$b]}
         SUB="$(echo -e "$SUB" | tr -d '[:space:]')"
-        # echo "$SUB"
     fi
 
     SORT="$2"
@@ -331,14 +357,18 @@ deviantart() {
     fi
     CONTENT=$(curl --silent -H "Authorization: Bearer $ACCESS_TOKEN" -H "Accept: application/json" -H "Content-Type: application/json" "$URL")
     mapfile -t URLS <<<"$(echo -n "$CONTENT" | jq -r '.results[].content.src')"
+    wait # prevent spawning too many processes
     SIZE=${#URLS[@]}
+    if [[ "$SIZE" -eq 0 ]]; then
+        die "not-valid"
+    fi
     IDX=$((RANDOM % SIZE))
     TARGET_URL=${URLS[$IDX]}
     putup_wallpaer
 }
 
 # SC2034
-PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:bhppbsa --long artist:,directory:,link:,subreddit:,search:,bing,help,prebing,picsum,save -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:u:bhppbsa --long artist:,directory:,url:,subreddit:,search:,bing,help,prebing,picsum,save -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
@@ -423,7 +453,11 @@ run_stylish() {
         gnome_cmd
         ;;
     url)
-        printf "Not implemented yet.\n"
+        if [[ "$LINK" =~ subreddit ]]; then
+            reddit
+        else
+            deviantart
+        fi
         ;;
     prebing)
         bing_daily "pre"
