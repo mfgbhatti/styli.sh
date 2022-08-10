@@ -36,172 +36,129 @@ source_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
         source "$CONFIG_FILE"
     else
-        cat <<EOT >"$CONFIG_FILE"
-# ┏━┳┓╋╋╋╋┏┳━┳┓
-# ┃━┫┗┳┳┳┓┣┫━┫┗┓
-# ┣━┃┏┫┃┃┗┫┣━┃┃┃
-# ┗━┻━╋┓┣━┻┻━┻┻┛
-# ╋╋╋╋┗━┛━━┛
-# 
-# Configuration file for styli.sh
-# sourced from https://github.com/mfgbhatti/styli.sh
-# Please dont edit this file manually, instead edit main script
-# This file is automatically updated by styli.sh
-# 
-# different out errors / warnings
-die() {
-    case "\$1" in
-    "no-sub")
-        MSG="Please check the subreddits file in \$CONFIG_FILE"
-        ;;
-    "mime")
-        MSG="MIME-Type missmatch. Downloaded file is not an image!"
-        ;;
-    "unexpect")
-        MSG="Unexpected option: \$1 this should not happen."
-        ;;
-    "internet")
-        MSG="No internet connection, exiting stylish."
-        ;;
-    "not-valid")
-        MSG="The current subreddit is not valid."
-        ;;
-    *)
-        MSG="Unknown error."
-        ;;
-    esac
-
-    printf "ERR: %s\n" "\$MSG" >&2
-    exit 0
-}
-# setting options to use next time
-set_option() {
-    if grep -Eq "^\$1=.*?" "\$CONFIG_FILE"; then
-        sed -i -E "s/^\$1.*/\$1=\"\$2\"/" \$CONFIG_FILE
-    else
-        printf "%s=\"%s\"\n" "\$1" "\$2" >>"\$CONFIG_FILE"
+        printf "There is no config file at %s\n" "$CONFIG_FILE"
+        exit 0
     fi
-}
-
-# permanant variables
-MIME_TYPES=("image/bmp" "image/jpeg" "image/gif" "image/png" "image/heic")
-DEST="\$HOME/Pictures/wallpapers"
-WALLPAPER="\$CACHEDIR/wallpaper.jpg"
-TEMP_WALL="\$CACHEDIR/temp.jpg"
-SAVED_WALLPAPER="\$DEST/stylish-\$RANDOM.jpg"
-UNSPLASH="https://source.unsplash.com/random/"
-GNOME_FILE="file://\$WALLPAPER"
-SUBS="\$CONFDIR/subreddits.conf"
-BING_URL="http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8"
-BING_CACHE="\$CACHEDIR/bing.cache"
-PICSUM_URL="https://picsum.photos/v2/list?limit=100"
-PICSUM_CACHE="\$CACHEDIR/picsum.cache"
-USERAGENT="Mozilla/5.0 (X11; Arch x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
-TIMEOUT="60"
-#------AUTO-UPDATED------#
-EXEC_TIME="1"
-BING_DATE="00000000"
-EOT
-        source "$CONFIG_FILE"
-    fi
-}
-write_subs() {
-    cat <<EOT >"$SUBS"
-EarthPorn
-CityPorn
-SkyPorn
-WeatherPorn
-BotanicalPorn
-LakePorn
-VillagePorn
-BeachPorn
-WaterPorn
-SpacePorn
-EOT
-}
-
-
-usage() {
-    echo -ne "Usage:
-    styli.sh option <string>
-    styli.sh config file is located at .config/styli.sh/stylish.conf
-    for subreddits use file at .config/styli.sh/subreddits.conf
-    Following options can be used
-
-    [ -a  | --artist <deviant artist> ]
-    [ -b  | --bing <bing daily wallpaper> ]
-    [ -d  | --directory ]
-    [ -g  | --gnome ]
-    [ -h  | --help ]
-    [ -l  | --link <source> ]
-    [ -p  | --picsum <images on picusm> ]
-    [ -r  | --subreddit <subreddit> ]
-    [ -s  | --search <string> ]
-    [ -sa | --save <Save current image to pictures directory> ]
-    \n"
-    exit 0
 }
 
 test() {
     # For testing purposes
-    de_check
+    # de_check
+    # source_config
     exit 0
+}
+
+gnome_cmd() {
+    if ! gsettings set org.gnome.desktop.background picture-uri "$FILE"; then
+        die "no-gsettings"
+    fi
+    if ! gsettings set org.gnome.desktop.background picture-uri-dark "$FILE"; then
+        die "no-gsettings"
+    fi
+}
+
+kde_cmd() {
+    qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var allDesktops = desktops();print (allDesktops);for (i=0;i<allDesktops.length;i++) {d = allDesktops[i];d.wallpaperPlugin = \"org.kde.image\";d.currentConfigGroup = Array(\"Wallpaper\", \"org.kde.image\", \"General\");d.writeConfig(\"Image\", \"file:$WALLPAPER\")}"
+}
+
+mate_cmd() {
+    gsettings set org.mate.background show-desktop-icons false
+    sleep 1
+    gsettings set org.mate.background show-desktop-icons true
+    if ! gsettings set org.mate.background picture-filename "$WALLPAPER"; then
+        die "no-gsettings"
+    fi
+}
+
+cinnamon_cmd () {
+    if ! gsettings set org.cinnamon.desktop.background picture-uri "$FILE"; then
+        die "no-gsettings"
+    fi
+}
+
+lxde_cmd() {
+    pcmanfm --wallpaper-mode=fit --set-wallpaper="$WALLPAPER"
+}
+
+xfce_cmd() {
+    readarray -t PROP_ARR < "$(xfconf-query --channel xfce4-desktop --property /backdrop -l | grep -E "screen.*/monitor.*image-path$" -e "screen.*/monitor.*/last-image$")"
+       for PROP in "${PROP_ARR[@]}"; do
+        xfconf-query --channel xfce4-desktop --property "$PROP" --create --type string --set "$WALLPAPER"
+        xfconf-query --channel xfce4-desktop --property "$PROP" --set "$WALLPAPER"
+    done 
+}
+
+nitrogen_cmd() {
+    nitrogen --set-auto --save --file "$WALLPAPER"
+}
+
+feh_cmd() {
+    feh --bg-fill "$WALLPAPER"
+}
+
+sway_cmd() {
+    swaybg set "$WALLPAPER"
+}
+
+paywal_cmd() {
+    paywal -i "$WALLPAPER"
 }
 
 select_de() {
     PS3="Please enter your option: "
-        select DE in "${SELECT_DE[@]}"; do
-            case $DE in
-            "gnome")
-                gnome_cmd
-                break
-                ;;
-            "kde")
-                kde_cmd
-                break
-                ;;
-            "mate")
-                mate_cmd
-                break
-                ;;
-            "cinnamon")
-                cinnamon_cmd
-                break
-                ;;
-            "lxde")
-                lxde_cmd
-                break
-                ;;
-            "xfce")
-                xfce_cmd
-                break
-                ;;
-            "nitrogen")
-                nitrogen_cmd
-                break
-                ;;
-            "feh")
-                feh_cmd
-                break
-                ;;
-            "sway")
-                sway_cmd
-                break
-                ;;
-            "paywal")
-                paywal_cmd
-                break
-                ;;
-            "none")
-                printf "App is not supported yet.\n"
-                break
-                ;;
-            *)  
-                printf "Invalid option\n"
-                break
-                ;;
-            esac
-        done
+    select DE in "${SELECT_DE[@]}"; do
+        case $DE in
+        "gnome")
+            gnome_cmd
+            break
+            ;;
+        "kde")
+            kde_cmd
+            break
+            ;;
+        "mate")
+            mate_cmd
+            break
+            ;;
+        "cinnamon")
+            cinnamon_cmd
+            break
+            ;;
+        "lxde")
+            lxde_cmd
+            break
+            ;;
+        "xfce")
+            xfce_cmd
+            break
+            ;;
+        "nitrogen")
+            nitrogen_cmd
+            break
+            ;;
+        "feh")
+            feh_cmd
+            break
+            ;;
+        "sway")
+            sway_cmd
+            break
+            ;;
+        "paywal")
+            paywal_cmd
+            break
+            ;;
+        "none")
+            printf "App is not supported yet.\n"
+            break
+            ;;
+        *)  
+            printf "Invalid option\n"
+            break
+            ;;
+        esac
+    done
+    printf "Stylish updated your wallpaper!\n"
 }
 
 de_check() {
@@ -245,17 +202,6 @@ do_download() {
     if [ ! -f "$2" ]; then
         wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --no-check-certificate --quiet --output-document="$2" "$1"
     fi
-}
-
-gnome_cmd() {
-    if ! gsettings set org.gnome.desktop.background picture-uri "$GNOME_FILE"; then
-        printf "Stylish is not able to find gsettings.\n"
-    fi
-    if ! gsettings set org.gnome.desktop.background picture-uri-dark "$GNOME_FILE"; then
-        printf "Stylish is not able to find gsettings.\n"
-
-    fi
-    printf "Stylish updated your wallpaper!\n"
 }
 
 putup_wallpaer() {
