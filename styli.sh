@@ -427,10 +427,6 @@ while true; do
         DIR="$2"
         shift 2
         ;;
-    -g | --gnome)
-        OPT=gnome # todo; user provide a file to set the wallpaper
-        shift
-        ;;
     -h | --help)
         usage
         exit
@@ -487,9 +483,6 @@ run_stylish() {
         ;;
     directory)
         select_random_wallpaper "$DIR"
-        ;;
-    gnome)
-        gnome_cmd
         ;;
     url)
         if [[ "$LINK" =~ subreddit ]]; then
