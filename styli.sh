@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2120,SC2154,SC1090,SC2034
+
 # SC2120: foo references arguments, but none are ever passed.
 # SC1090: Can't follow non-constant source. Use a directive to specify location.
 # SC2154: var is referenced but not assigned.
@@ -141,6 +142,87 @@ usage() {
     exit 0
 }
 
+test() {
+    # For testing purposes
+    de_check
+    exit 0
+}
+
+select_de() {
+    PS3="Please enter your option: "
+        select DE in "${SELECT_DE[@]}"; do
+            case $DE in
+            "gnome")
+                gnome_cmd
+                break
+                ;;
+            "kde")
+                kde_cmd
+                break
+                ;;
+            "mate")
+                mate_cmd
+                break
+                ;;
+            "cinnamon")
+                cinnamon_cmd
+                break
+                ;;
+            "lxde")
+                lxde_cmd
+                break
+                ;;
+            "xfce")
+                xfce_cmd
+                break
+                ;;
+            "nitrogen")
+                nitrogen_cmd
+                break
+                ;;
+            "feh")
+                feh_cmd
+                break
+                ;;
+            "sway")
+                sway_cmd
+                break
+                ;;
+            "paywal")
+                paywal_cmd
+                break
+                ;;
+            "none")
+                printf "App is not supported yet.\n"
+                break
+                ;;
+            *)  
+                printf "Invalid option\n"
+                break
+                ;;
+            esac
+        done
+}
+
+de_check() {
+    DE_LIST=("gnome" "kde" "mate" "cinnamon" "lxde" "xfce")
+    PAT="gnome|kde|mate|cinnamon|lxde|xfce"
+    PS_DE=$(pgrep -l "$PAT" | tail -1 | cut -d ' ' -f 2 | sed -E 's/(.*)-.*/\1/')
+    SELECT_DE=("gnome" "kde" "mate" "cinnamon" "lxde" "xfce" "nitrogen" "feh" "sway" "pywal" "none")
+    if [[ "${DE_LIST[*]}" =~  $PS_DE ]]; then
+        "$PS_DE"_cmd
+    elif [[ "${XDG_CURRENT_DESKTOP,,}" == "$DESKTOP_SESSION" ]]; then
+        CURRENT_DE="${XDG_CURRENT_DESKTOP,,}"
+        if [[ "${DE_LIST[*]}" =~ $CURRENT_DE ]]; then
+            "$CURRENT_DE"_cmd
+        else
+            select_de
+        fi
+    else
+        select_de
+    fi
+}
+
 type_check() {
     PROCEED=0
     for REQUIREDTYPE in "${MIME_TYPES[@]}"; do
@@ -157,12 +239,14 @@ type_check() {
         cp "$TEMP_WALL" "$WALLPAPER"
     fi
 }
+
 do_download() {
     find "$(dirname "$2")" -name "$(basename "$2")" -mmin +120 -exec rm {} \; 2>/dev/null
     if [ ! -f "$2" ]; then
         wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --no-check-certificate --quiet --output-document="$2" "$1"
     fi
 }
+
 gnome_cmd() {
     if ! gsettings set org.gnome.desktop.background picture-uri "$GNOME_FILE"; then
         printf "Stylish is not able to find gsettings.\n"
@@ -177,7 +261,7 @@ gnome_cmd() {
 putup_wallpaer() {
     wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --no-check-certificate --quiet --output-document="$TEMP_WALL" "$TARGET_URL"
     type_check
-    gnome_cmd
+    de_check
 }
 
 save_cmd() {
@@ -267,7 +351,7 @@ select_random_wallpaper() {
     do_wallpaper() {
         WALLPAPER="$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)"
         if [[ -f "$WALLPAPER" ]]; then
-            gnome_cmd
+            de_check
         else
             printf "No wallpaper found in %s\n" "$DIR"
         fi
@@ -371,7 +455,7 @@ deviantart() {
 }
 
 # SC2034
-PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:u:bhppbsa --long artist:,directory:,url:,subreddit:,search:,bing,help,prebing,picsum,save -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:u:bhppbsat --long artist:,directory:,url:,subreddit:,search:,bing,help,prebing,picsum,save,test -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
@@ -429,6 +513,9 @@ while true; do
         OPT=save
         SAVE=1
         shift
+        ;;
+    -t | --test)
+        test
         ;;
     -- | '')
         shift
