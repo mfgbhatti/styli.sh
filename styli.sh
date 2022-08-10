@@ -11,6 +11,8 @@
 # ┣━┃┏┫┃┃┗┫┣━┃┃┃
 # ┗━┻━╋┓┣━┻┻━┻┻┛
 # ╋╋╋╋┗━┛━━┛
+# sourced from https://github.com/mfgbhatti/styli.sh
+#
 
 if [[ -z ${XDG_CONFIG_HOME} ]]; then
     XDG_CONFIG_HOME="$HOME/.config"
@@ -45,6 +47,7 @@ test() {
     # For testing purposes
     # de_check
     # source_config
+    printf "This is a test\n"
     exit 0
 }
 
