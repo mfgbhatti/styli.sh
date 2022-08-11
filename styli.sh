@@ -38,15 +38,14 @@ source_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
         source "$CONFIG_FILE"
     else
-        printf "There is no config file at %s\n" "$CONFIG_FILE"
-        exit 0
+        die "There is no config file."
     fi
 }
 
 test() {
     # For testing purposes
     # de_check
-    # source_config
+    source_config
     printf "This is a test\n"
     exit 0
 }
@@ -152,11 +151,11 @@ select_de() {
             break
             ;;
         "none")
-            printf "App is not supported yet.\n"
+            die "This is not supported yet."
             break
             ;;
         *)  
-            printf "Invalid option\n"
+            die "unexpect"
             break
             ;;
         esac
@@ -222,16 +221,16 @@ save_cmd() {
                     cp "$WALLPAPER" "$SAVED_WALLPAPER"
                     printf "Stylish saved current wallpaper to %s.\n" "$SAVED_WALLPAPER"
                 else
-                    printf "%s already exists in %s\n" "$(basename "$SAVED_WALLPAPER")" "$DEST"
+                    die "Already exists"
                 fi
             else
-                printf "You do not have write permissions.\n"
+                die "You do not have write permissions."
             fi
         else
-            printf "Stylish is unable to locate %s.\n" "$DEST"
+            die "Stylish is unable to locate."
         fi
     else
-        printf "Wallpaper is not found are you using gnome?\n"
+        die "Wallpaper is not found."
     fi
 }
 
@@ -302,7 +301,7 @@ select_random_wallpaper() {
         if [[ -f "$WALLPAPER" ]]; then
             de_check
         else
-            printf "No wallpaper found in %s\n" "$DIR"
+            die "No wallpaper found"
         fi
     }
 
@@ -311,10 +310,10 @@ select_random_wallpaper() {
             if [[ -w "$DIR" ]]; then
                 do_wallpaper
             else
-                printf "You don't have permissions to %s\n" "$DIR"
+                die "You don't have permissions"
             fi
         else
-            printf "Invalid directory: %s\n" "$DIR"
+            die "Invalid directory"
         fi
     else
         read -r -p "Is $DIR in your home directory? [y/N] " RESPONSE
@@ -329,7 +328,7 @@ select_random_wallpaper() {
             do_wallpaper
             ;;
         *)
-            die "invalid"
+            die "unexpect"
             ;;
         esac
     fi
@@ -403,8 +402,86 @@ deviantart() {
     putup_wallpaer
 }
 
+help() {
+    echo -ne "
+    NAME
+        styli.sh - A simple bash script to manage your desktop background wallpaper.
+    SYNOPSIS
+        styli.sh <operation>
+        styli.sh <operation> [options]
+    DESCRIPTION
+        Styli.sh is a Bash script that aims to automate the tedious process of finding 
+        new wallpapers, downloading and switching them via the configs. Styli.sh can 
+        search for specific wallpapers from unsplash or download a random image from 
+        bing, picsum, deviantart and the specified subreddits.
+    OPERATIONS    
+        Following operations can be used with/without options
+    -h, --help
+        Print this help message
+    -v, --version
+        Print the version of styli.sh
+    -a, --artist [ARTIST]
+        Set the artist to search for wallpaper on deviantart
+    -b, --bing
+        Set the daily bing wallpaper
+    -d, --directory [PATH]
+        Set wallpaper randomly from the directory
+    -l, --link [URL]
+        Set the wallpaper from the given url
+    -p, --picsum
+        Set the wallpaper from the picsum api
+    -pb, --pre-bing
+        Set the wallpaper cycling through the bing wallpapers
+    -r, --reddit [SUBREDDIT]
+        Set the wallpaper from the given subreddit
+    -s, --search [QUERY]
+        Set the wallpaper from the given query from unsplash
+    -sa, --save
+        Save the current wallpaper to ~/Pictures/wallpapers
+    -t, --test
+        It is development option, to try out different commands in script
+
+    CONFIGURATION
+        styli.sh config file is located at ~/.config/styli.sh/stylish.conf
+        for subreddits use file at ~/.config/styli.sh/subreddits
+
+    \n"
+    exit 0
+}
+
+usage() {
+    echo -ne "
+    USAGE
+        styli.sh <operation>
+        styli.sh <operation> [options]
+    -a, --artist [ARTIST]
+        Set the artist to search for wallpaper on deviantart
+    -b, --bing
+        Set the daily bing wallpaper
+    -d, --directory [PATH]
+        Set wallpaper randomly from the directory
+    -l, --link [URL]
+        Set the wallpaper from the given url
+    -p, --picsum
+        Set the wallpaper from the picsum api
+    -pb, --pre-bing
+        Set the wallpaper cycling through the bing wallpapers
+    -r, --reddit [SUBREDDIT]
+        Set the wallpaper from the given subreddit
+    -s, --search [QUERY]
+        Set the wallpaper from the given query from unsplash
+    -sa, --save
+        Save the current wallpaper to ~/Pictures/wallpapers
+    \n"
+}
+
+version() {
+    VERSION="0.0.10"
+    printf "styli.sh is at %s version\n" "$VERSION"
+}
+
 # SC2034
-PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:u:bhppbsat --long artist:,directory:,url:,subreddit:,search:,bing,help,prebing,picsum,save,test -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:u:bhppbsatv --long artist:,directory:,url:,reddit:,search:,bing,help,pre-bing,picsum,save,test,version -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
@@ -428,7 +505,7 @@ while true; do
         shift 2
         ;;
     -h | --help)
-        usage
+        help | less
         exit
         ;;
     -u | --url) # not implemented yet
@@ -440,7 +517,7 @@ while true; do
         OPT=picsum
         shift
         ;;
-    -pb | --prebing)
+    -pb | --pre-bing)
         OPT=prebing
         shift
         ;;
@@ -462,12 +539,15 @@ while true; do
     -t | --test)
         test
         ;;
+    -v | --version)
+        version
+        break
+        ;;
     -- | '')
         shift
         break
         ;;
     *)
-        die "unexpect"
         usage
         ;;
     esac
@@ -514,15 +594,15 @@ run_stylish() {
 
 root_check() {
     if [[ "$(id -u)" == "0" ]]; then
-        echo -ne "ERROR! Stylish must not be run under the 'root' user!\n"
+        echo -ne "ERROR: Stylish must not be run under the 'root' user!\n"
         exit 1
     fi
 }
 
+source_config
 if wget --quiet --spider http://google.com; then
     #echo "Online"
     if root_check; then
-        source_config
         run_stylish
     fi
 else
