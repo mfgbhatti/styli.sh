@@ -50,6 +50,13 @@ test() {
     exit 0
 }
 
+root_check() {
+    if [[ "$(id -u)" == "0" ]]; then
+        die "Stylish must not be run under the 'root' user!"
+        exit 1
+    fi
+}
+
 gnome_cmd() {
     if ! gsettings set org.gnome.desktop.background picture-uri "$FILE"; then
         die "no-gsettings"
@@ -249,7 +256,7 @@ unsplash() {
     putup_wallpaer
 }
 
-bing_daily() {
+bing_cmd() {
     do_download "$BING_URL" "$BING_CACHE"
     if [[ -z "$1" ]]; then
         URL=$(jq '.images[0].url' <"$BING_CACHE" | sed -e 's/^"//' -e 's/"$//')
@@ -282,7 +289,7 @@ bing_daily() {
     putup_wallpaer
 }
 
-daily_picsum() {
+picsum_cmd() {
     do_download "$PICSUM_URL" "$PICSUM_CACHE"
     mapfile -t URLS <<<"$(jq '.[] | .download_url' <"$PICSUM_CACHE" | sed 's/\"//g')"
     wait # prevent spawning too many processes
@@ -476,135 +483,87 @@ usage() {
 }
 
 version() {
-    VERSION="0.0.10"
-    printf "styli.sh is at %s version\n" "$VERSION"
+    VERSION="0.0.11"
+    printf "styli.sh is at %s\n" "$VERSION"
 }
 
 # SC2034
-PARSED_ARGUMENTS=$(getopt -a -n "$0" -o a:d:l:r:s:u:bhppbsatv --long artist:,directory:,url:,reddit:,search:,bing,help,pre-bing,picsum,save,test,version -- "$@")
+PARSED_ARGUMENTS=$(getopt --alternative --name "$0" --options a:d:l:r:s:u:b,h,p,pb,sa,t,v --longoptions artist:,directory:,url:,reddit:,search:,bing,help,pre-bing,picsum,save,test,version -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
     usage
-    exit
+    exit 0
 fi
-while true; do
-    case "$1" in
-    -a | --artist)
-        OPT=artist
-        ARTIST="$2"
-        shift 2
-        ;;
-    -b | --bing)
-        OPT=bing
-        shift
-        ;;
-    -d | --directory)
-        OPT=directory
-        DIR="$2"
-        shift 2
-        ;;
-    -h | --help)
-        help | less
-        exit
-        ;;
-    -u | --url) # not implemented yet
-        OPT=url
-        LINK="$2"
-        shift 2
-        ;;
-    -p | --picsum)
-        OPT=picsum
-        shift
-        ;;
-    -pb | --pre-bing)
-        OPT=prebing
-        shift
-        ;;
-    -r | --subreddit)
-        OPT=subreddit
-        SUB="$2"
-        shift 2
-        ;;
-    -s | --search)
-        OPT=search
-        SEARCH="$2"
-        shift 2
-        ;;
-    -sa | --save)
-        OPT=save
-        SAVE=1
-        shift
-        ;;
-    -t | --test)
-        test
-        ;;
-    -v | --version)
-        version
-        break
-        ;;
-    -- | '')
-        shift
-        break
-        ;;
-    *)
-        usage
-        ;;
-    esac
-done
-
-run_stylish() {
-    case $OPT in
-    artist)
-        deviantart "$ARTIST"
-        ;;
-    bing)
-        bing_daily
-        ;;
-    directory)
-        select_random_wallpaper "$DIR"
-        ;;
-    url)
-        if [[ "$LINK" =~ subreddit ]]; then
-            reddit
-        else
-            deviantart
-        fi
-        ;;
-    prebing)
-        bing_daily "pre"
-        ;;
-    picsum)
-        daily_picsum
-        ;;
-    subreddit)
-        reddit "$SUB"
-        ;;
-    search)
-        unsplash "$SEARCH"
-        ;;
-    save)
-        save_cmd
-        ;;
-    *)
-        die "unexpect"
-        ;;
-    esac
-}
-
-root_check() {
-    if [[ "$(id -u)" == "0" ]]; then
-        echo -ne "ERROR: Stylish must not be run under the 'root' user!\n"
-        exit 1
-    fi
-}
-
-source_config
 if wget --quiet --spider http://google.com; then
     #echo "Online"
     if root_check; then
-        run_stylish
-    fi
+        source_config
+        while true; do
+            case "$1" in
+            -a | --artist)
+                deviantart "$2"
+                break
+                ;;
+            -b | --bing)
+                bing_cmd
+                break
+                ;;
+            -d | --directory)#
+                select_random_wallpaper "$2"
+                break
+                ;;
+            -h | --help)
+                help | less
+                break
+                ;;
+            -u | --url) # not implemented yet
+                if [[ "$LINK" =~ subreddit ]]; then
+                    reddit
+                else
+                    deviantart
+                fi
+                break
+                ;;
+            -p | --picsum)
+                picsum_cmd
+                break
+                ;;
+            -pb | --pre-bing)
+                bing_cmd "pre"
+                break
+                ;;
+            -r | --reddit)
+                reddit "$2"
+                break
+                ;;
+            -s | --search)
+                unsplash "$2"
+                break
+                ;;
+            -sa | --save)
+                save_cmd
+                break
+                ;;
+            -t | --test)
+                test
+                break
+                ;;
+            -v | --version)
+                version
+                break
+                ;;
+            -- | '')
+                shift
+                break
+                ;;
+            *)
+                usage
+                exit 0
+                ;;
+            esac
+        done
+        fi
 else
     die "internet"
 fi
