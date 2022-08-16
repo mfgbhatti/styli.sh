@@ -52,7 +52,7 @@ test() {
 
 root_check() {
     if [[ "$(id -u)" == "0" ]]; then
-        die "Stylish must not be run under the 'root' user!"
+        die "styli.sh must not be run under the 'root' user!"
         exit 1
     fi
 }
@@ -167,7 +167,7 @@ select_de() {
             ;;
         esac
     done
-    printf "Stylish updated your wallpaper!\n"
+    printf "styli.sh updated your wallpaper!\n"
 }
 
 de_check() {
@@ -226,7 +226,7 @@ save_cmd() {
             if [[ -w "$DEST" ]]; then
                 if [[ ! -f "$DEST/$(basename "$SAVED_WALLPAPER")" ]]; then
                     cp "$WALLPAPER" "$SAVED_WALLPAPER"
-                    printf "Stylish saved current wallpaper to %s.\n" "$SAVED_WALLPAPER"
+                    printf "styli.sh saved current wallpaper to %s.\n" "$SAVED_WALLPAPER"
                 else
                     die "Already exists"
                 fi
@@ -234,7 +234,7 @@ save_cmd() {
                 die "You do not have write permissions."
             fi
         else
-            die "Stylish is unable to locate."
+            die "styli.sh is unable to locate."
         fi
     else
         die "Wallpaper is not found."
@@ -341,6 +341,11 @@ select_random_wallpaper() {
     fi
 }
 
+url_cmd() {
+    TARGET_URL="$1"
+    putup_wallpaer
+}
+
 reddit() {
     if [[ -n "$1" ]]; then
         SUB="$1"
@@ -355,13 +360,13 @@ reddit() {
         SUB="$(echo -e "$SUB" | tr -d '[:space:]')"
     fi
 
-    SORT="$2"
+    SORT="$2" # new, hot, top ,rising,
     TOP_TIME="$3"
     if [[ -z "$SORT" ]]; then
         SORT="hot"
     fi
     URL="https://www.reddit.com/r/$SUB/$SORT.json?raw_json=1&t=$TOP_TIME"
-    CONTENT=$(wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --quiet -O - "$REDDIT_URL")
+    CONTENT=$(wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --quiet -O - "$URL")
     if [[ -z "$TOP_TIME" ]]; then
         TOP_TIME=""
     fi
@@ -431,16 +436,18 @@ help() {
         Set the artist to search for wallpaper on deviantart
     -b, --bing
         Set the daily bing wallpaper
+    -b p, --bing pre
+        Set the wallpaper from a previous bing daily wallpaper
     -d, --directory [PATH]
         Set wallpaper randomly from the directory
-    -l, --link [URL]
-        Set the wallpaper from the given url
+    -u, --url [URL]
+        Set the wallpaper from the given url in quotes
     -p, --picsum
         Set the wallpaper from the picsum api
-    -pb, --pre-bing
-        Set the wallpaper cycling through the bing wallpapers
-    -r, --reddit [SUBREDDIT]
+    -r, --reddit [SUBREDDIT] [SORT] [TOP_TIME]
         Set the wallpaper from the given subreddit
+        or leave to search from ~/.config/styli.sh/subreddits
+        SORT can be hot, top, rising, new
     -s, --search [QUERY]
         Set the wallpaper from the given query from unsplash
     -sa, --save
@@ -465,16 +472,18 @@ usage() {
         Set the artist to search for wallpaper on deviantart
     -b, --bing
         Set the daily bing wallpaper
+    -b p, --bing pre
+        Set the wallpaper from a previous bing daily wallpaper
     -d, --directory [PATH]
         Set wallpaper randomly from the directory
-    -l, --link [URL]
-        Set the wallpaper from the given url
+    -u, --url [URL]
+        Set the wallpaper from the given url in quotes
     -p, --picsum
         Set the wallpaper from the picsum api
-    -pb, --pre-bing
-        Set the wallpaper cycling through the bing wallpapers
-    -r, --reddit [SUBREDDIT]
+    -r, --reddit [SUBREDDIT] [SORT] [TOP_TIME]
         Set the wallpaper from the given subreddit
+        or leave to search from ~/.config/styli.sh/subreddits
+        SORT can be hot, top, rising, new
     -s, --search [QUERY]
         Set the wallpaper from the given query from unsplash
     -sa, --save
@@ -488,7 +497,7 @@ version() {
 }
 
 # SC2034
-PARSED_ARGUMENTS=$(getopt --alternative --name "$0" --options a:d:l:r:s:u:b,h,p,pb,sa,t,v --longoptions artist:,directory:,url:,reddit:,search:,bing,help,pre-bing,picsum,save,test,version -- "$@")
+PARSED_ARGUMENTS=$(getopt --alternative --name "$0" --options a:,d:,s:,u:,b,h,p,r,sa,t,v --longoptions artist:,directory:,url:,search:,bing,help,picsum,reddit,save,test,version -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
@@ -506,10 +515,10 @@ if wget --quiet --spider http://google.com; then
                 break
                 ;;
             -b | --bing)
-                bing_cmd
+                bing_cmd "$2"
                 break
                 ;;
-            -d | --directory)#
+            -d | --directory)
                 select_random_wallpaper "$2"
                 break
                 ;;
@@ -517,24 +526,16 @@ if wget --quiet --spider http://google.com; then
                 help | less
                 break
                 ;;
-            -u | --url) # not implemented yet
-                if [[ "$LINK" =~ subreddit ]]; then
-                    reddit
-                else
-                    deviantart
-                fi
+            -u | --url)
+                url_cmd "$2"
                 break
                 ;;
             -p | --picsum)
                 picsum_cmd
                 break
                 ;;
-            -pb | --pre-bing)
-                bing_cmd "pre"
-                break
-                ;;
             -r | --reddit)
-                reddit "$2"
+                reddit
                 break
                 ;;
             -s | --search)
