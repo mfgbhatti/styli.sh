@@ -27,6 +27,11 @@ if [[ ! -d "$CONFDIR" ]]; then
     mkdir -p "$CONFDIR"
 fi
 
+STATEDIR="$HOME/.local/state/styli.sh"
+if [[ ! -d "$CONFDIR" ]]; then
+    mkdir -p "$CONFDIR"
+fi
+
 CACHEDIR="${XDG_CACHE_HOME}/styli.sh"
 if [[ ! -d "$CACHEDIR" ]]; then
     mkdir -p "$CACHEDIR"
