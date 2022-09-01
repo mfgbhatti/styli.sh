@@ -42,6 +42,9 @@ EOT
 copy_files() {
     if [[ -f "$CONFIG_FILE" ]]; then
         read -r -p "Config already exist, do you want it to remove [y/N]: " OPT
+        if [[ -z $OPT ]]; then
+            OPT="n" # default to no
+        fi
         case "$OPT" in
             y | Y | yes | YES)
             rm -rf "$CONFIG_FILE"
