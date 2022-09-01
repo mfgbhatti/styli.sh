@@ -28,7 +28,7 @@ if [[ ! -d "$CONFDIR" ]]; then
 fi
 
 STATEDIR="$HOME/.local/state/styli.sh"
-if [[ ! -d "$CONFDIR" ]]; then
+if [[ ! -d "$STATEDIR" ]]; then
     mkdir -p "$CONFDIR"
 fi
 

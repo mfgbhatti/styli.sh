@@ -73,6 +73,10 @@ copy_files() {
         printf "Exiting...\n"
         exit 0
     fi
+    [[ ! -d  "$HOME/.local/state/styli.sh" ]] && mkdir -p "$HOME/.local/state/styli.sh"
+    [[ ! -d  "$HOME/.config/styli.sh" ]] && mkdir -p "$HOME/.config/styli.sh"
+    [[ ! -d  "$HOME/.cache/styli.sh" ]] && mkdir -p "$HOME/.cache/styli.sh"
+    printf "Created config, cache and state directories\n"
     printf "Stylish installed successfully!\n"    
 }
 
