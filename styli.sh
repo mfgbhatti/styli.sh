@@ -29,7 +29,7 @@ fi
 
 STATEDIR="$HOME/.local/state/styli.sh"
 if [[ ! -d "$STATEDIR" ]]; then
-    mkdir -p "$CONFDIR"
+    mkdir -p "$STATEDIR"
 fi
 
 CACHEDIR="${XDG_CACHE_HOME}/styli.sh"
@@ -43,15 +43,16 @@ source_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
         source "$CONFIG_FILE"
     else
-        die "There is no config file."
+        printf "There is no config file."
+	exit 0
     fi
 }
 
 test() {
-    # For testing purposes
-    # de_check
-    source_config
     printf "This is a test\n"
+    # For testing purposes
+    de_check
+    # source_config
     exit 0
 }
 
@@ -99,7 +100,7 @@ xfce_cmd() {
        for PROP in "${PROP_ARR[@]}"; do
         xfconf-query --channel xfce4-desktop --property "$PROP" --create --type string --set "$WALLPAPER"
         xfconf-query --channel xfce4-desktop --property "$PROP" --set "$WALLPAPER"
-    done 
+    done
 }
 
 nitrogen_cmd() {
@@ -166,7 +167,7 @@ select_de() {
             die "This is not supported yet."
             break
             ;;
-        *)  
+        *)
             die "unexpect"
             break
             ;;
@@ -225,7 +226,7 @@ putup_wallpaer() {
 }
 
 save_cmd() {
-    WALLPAPER=$(gsettings get org.gnome.desktop.background picture-uri | sed "s/file:\/\///;s/'//g")
+    # WALLPAPER=$(gsettings get org.gnome.desktop.background picture-uri | sed "s/file:\/\///;s/'//g")
     if [[ -f "$WALLPAPER" ]]; then
         if [[ -d "$DEST" ]]; then
             if [[ -w "$DEST" ]]; then
@@ -308,42 +309,49 @@ picsum_cmd() {
 }
 
 select_random_wallpaper() {
+    DIR="$1"
     do_wallpaper() {
-        WALLPAPER="$(find "$DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)"
+        WALLPAPER="$(find "$1" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.svg" -o -iname "*.gif" \) -print | shuf -n 1)"
         if [[ -f "$WALLPAPER" ]]; then
+            FILE="file://$WALLPAPER"
             de_check
         else
             die "No wallpaper found"
         fi
     }
 
-    if [[ "$DIR" =~ ^/ ]]; then
-        if [[ -d "$DIR" ]]; then
-            if [[ -w "$DIR" ]]; then
-                do_wallpaper
-            else
-                die "You don't have permissions"
-            fi
+    check_directory() {
+        if [[ -d "$1" ]]; then
+            do_wallpaper "$1"
         else
             die "Invalid directory"
         fi
-    else
-        read -r -p "Is $DIR in your home directory? [y/N] " RESPONSE
+    }
+    add_path() {
+        read -r -p "Is $1 in your home directory? [y/N] " RESPONSE
         case $RESPONSE in
         y | Y | yes | YES)
-            DIR="$HOME/$DIR"
-            do_wallpaper
+            DIR="$HOME/$1"
+            check_directory "$DIR"
             ;;
         n | N | no | NO)
-            read -r -p "Please enter a full or absolute path.\n" OPTS
+            read -r -p "Please enter a full or absolute path." OPTS
             DIR="$OPTS"
-            do_wallpaper
+            check_directory "$DIR"
             ;;
         *)
             die "unexpect"
             ;;
         esac
+    }
+
+    
+    if [[ "$DIR" =~ ^/ ||  "$DIR" =~ ^~ ]]; then
+        do_wallpaper "$DIR"
+    else
+        add_path "$DIR"
     fi
+
 }
 
 url_cmd() {
@@ -427,11 +435,11 @@ help() {
         styli.sh <operation>
         styli.sh <operation> [options]
     DESCRIPTION
-        Styli.sh is a Bash script that aims to automate the tedious process of finding 
-        new wallpapers, downloading and switching them via the configs. Styli.sh can 
-        search for specific wallpapers from unsplash or download a random image from 
+        Styli.sh is a Bash script that aims to automate the tedious process of finding
+        new wallpapers, downloading and switching them via the configs. Styli.sh can
+        search for specific wallpapers from unsplash or download a random image from
         bing, picsum, deviantart and the specified subreddits.
-    OPERATIONS    
+    OPERATIONS
         Following operations can be used with/without options
     -h, --help
         Print this help message
@@ -497,7 +505,7 @@ usage() {
 }
 
 version() {
-    VERSION="0.0.11"
+    VERSION="0.0.12"
     printf "styli.sh is at %s\n" "$VERSION"
 }
 
@@ -511,8 +519,8 @@ if [[ "$VALID_ARGUMENTS" != "0" ]]; then
 fi
 if wget --quiet --spider http://google.com; then
     #echo "Online"
+    source_config
     if root_check; then
-        source_config
         while true; do
             case "$1" in
             -a | --artist)
