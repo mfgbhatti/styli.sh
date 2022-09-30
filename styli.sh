@@ -248,17 +248,20 @@ save_cmd() {
 }
 
 unsplash() {
-    SEARCH="${SEARCH// /_}"
-    if [[ -n "$HEIGHT" || -n "$WIDTH" ]]; then
-        # keeping {} for $LINK value
-        TARGET_URL="${UNSPLASH}$WIDTHx$HEIGHT"
-    else
-        TARGET_URL="${UNSPLASH}1920x1080"
+    _SEARCH=$1
+    SEARCH="${_SEARCH// /_}"
+    ACCESS_KEY="HkMgPg_U2BfN-2CS5Fe1oQ-siy-u-cH5EcPx2s64X2E"
+    TEST_LINK="https://api.unsplash.com/search/photos?page=1&query=$SEARCH&orientation=landscape&order_by=latest&per_page=20"
+    CONTENT=$(wget --header="Authorization: Client-ID $ACCESS_KEY" --timeout="$TIMEOUT" --user-agent="$USERAGENT" --quiet -O - "$TEST_LINK")
+    mapfile -t URLS <<<"$(echo "$CONTENT" | jq '.results[].urls.raw' | sed -E 's/^"//;s/"$//')"
+    # echo "${URLS[@]}"
+    wait # prevent spawning too many processes
+    SIZE=${#URLS[@]}
+    if [[ "$SIZE" -eq 0 ]]; then
+        die "not-valid"
     fi
-
-    if [[ -n "$SEARCH" ]]; then
-        TARGET_URL="${UNSPLASH}/?$SEARCH"
-    fi
+    IDX=$((RANDOM % SIZE))
+    TARGET_URL=${URLS[$IDX]}
     putup_wallpaer
 }
 
