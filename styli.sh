@@ -52,7 +52,7 @@ source_config() {
 testing() {
     printf "This is a test\n"
     # For testing purposes
-    de_check
+    # de_check
     # source_config
     exit 0
 }
@@ -331,6 +331,7 @@ select_random_wallpaper() {
             die "Invalid directory"
         fi
     }
+
     add_path() {
         read -r -p "Is $1 in your home directory? [y/N] " RESPONSE
         case $RESPONSE in
@@ -349,13 +350,11 @@ select_random_wallpaper() {
         esac
     }
 
-
     if [[ "$DIR" =~ ^/ ||  "$DIR" =~ ^~ ]]; then
         do_wallpaper "$DIR"
     else
         add_path "$DIR"
     fi
-
 }
 
 url_cmd() {
