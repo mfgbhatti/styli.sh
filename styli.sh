@@ -508,7 +508,7 @@ usage() {
 }
 
 version() {
-    VERSION="0.0.12"
+    VERSION="0.0.14"
     printf "styli.sh is at %s\n" "$VERSION"
 }
 
