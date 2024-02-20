@@ -49,7 +49,7 @@ source_config() {
     fi
 }
 
-test() {
+testing() {
     printf "This is a test\n"
     # For testing purposes
     de_check
@@ -469,7 +469,7 @@ help() {
         Set the wallpaper from the given query from unsplash
     -sa, --save
         Save the current wallpaper to ~/Pictures/wallpapers
-    -t, --test
+    -t, --testing
         It is development option, to try out different commands in script
 
     CONFIGURATION
@@ -514,7 +514,7 @@ version() {
 }
 
 # SC2034
-PARSED_ARGUMENTS=$(getopt --alternative --name "$0" --options a:,d:,s:,u:,b,h,p,r,sa,t,v --longoptions artist:,directory:,url:,search:,bing,help,picsum,reddit,save,test,version -- "$@")
+PARSED_ARGUMENTS=$(getopt --alternative --name "$0" --options a:,d:,s:,u:,b,h,p,r,sa,t,v --longoptions artist:,directory:,url:,search:,bing,help,picsum,reddit,save,testing,version -- "$@")
 
 VALID_ARGUMENTS=$?
 if [[ "$VALID_ARGUMENTS" != "0" ]]; then
@@ -563,8 +563,8 @@ if wget --quiet --spider http://google.com; then
                 save_cmd
                 break
                 ;;
-            -t | --test)
-                test
+            -t | --testing)
+                testing
                 break
                 ;;
             -v | --version)
