@@ -22,22 +22,23 @@ if [[ -z ${XDG_CACHE_HOME} ]]; then
     XDG_CACHE_HOME="$HOME/.cache"
 fi
 
+# Configuration directories and file variables
 CONFDIR="${XDG_CONFIG_HOME}/styli.sh"
+CONFIG_FILE="$CONFDIR/stylish.conf"
+STATEDIR="$HOME/.local/state/styli.sh"
+CACHEDIR="${XDG_CACHE_HOME}/styli.sh"
+
 if [[ ! -d "$CONFDIR" ]]; then
     mkdir -p "$CONFDIR"
 fi
 
-STATEDIR="$HOME/.local/state/styli.sh"
 if [[ ! -d "$STATEDIR" ]]; then
     mkdir -p "$STATEDIR"
 fi
 
-CACHEDIR="${XDG_CACHE_HOME}/styli.sh"
 if [[ ! -d "$CACHEDIR" ]]; then
     mkdir -p "$CACHEDIR"
 fi
-
-CONFIG_FILE="$CONFDIR/stylish.conf"
 
 source_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
@@ -348,7 +349,7 @@ select_random_wallpaper() {
         esac
     }
 
-    
+
     if [[ "$DIR" =~ ^/ ||  "$DIR" =~ ^~ ]]; then
         do_wallpaper "$DIR"
     else
