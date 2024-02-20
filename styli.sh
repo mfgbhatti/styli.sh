@@ -41,11 +41,13 @@ if [[ ! -d "$CACHEDIR" ]]; then
 fi
 
 source_config() {
+    root_check
     if [[ -f "$CONFIG_FILE" ]]; then
         source "$CONFIG_FILE"
     else
-        printf "There is no config file."
-	exit 0
+        # echo "$CONFIG_FILE"
+        printf "There is no config file.\n"
+        exit 0
     fi
 }
 
@@ -58,9 +60,10 @@ testing() {
 }
 
 root_check() {
+    # echo -ne "root checking"
     if [[ "$(id -u)" == "0" ]]; then
-        die "styli.sh must not be run under the 'root' user!"
-        exit 1
+        printf "styli.sh must not be run under the 'root' user!\n"
+        exit 0
     fi
 }
 
@@ -508,7 +511,7 @@ usage() {
 }
 
 version() {
-    VERSION="0.0.15"
+    VERSION="0.0.16"
     printf "styli.sh is at %s\n" "$VERSION"
 }
 
@@ -525,64 +528,64 @@ fi
 source_config
 if wget --quiet --spider http://google.com; then
     #echo "Online"
-    if root_check; then
-        while true; do
-            case "$1" in
-            -a | --artist)
-                deviantart "$2"
-                break
-                ;;
-            -b | --bing)
-                bing_cmd "$2"
-                break
-                ;;
-            -d | --directory)
-                select_random_wallpaper "$2"
-                break
-                ;;
-            -h | --help)
-                help | less
-                break
-                ;;
-            -u | --url)
-                url_cmd "$2"
-                break
-                ;;
-            -p | --picsum)
-                picsum_cmd
-                break
-                ;;
-            -r | --reddit)
-                reddit
-                break
-                ;;
-            -s | --search)
-                unsplash "$2"
-                break
-                ;;
-            -sa | --save)
-                save_cmd
-                break
-                ;;
-            -t | --testing)
-                testing
-                break
-                ;;
-            -v | --version)
-                version
-                break
-                ;;
-            -- | '')
-                shift
-                break
-                ;;
-            *)
-                usage
-                exit 0
-                ;;
-            esac
-        done
-        fi
+    # if root_check; then
+    while true; do
+        case "$1" in
+        -a | --artist)
+            deviantart "$2"
+            break
+            ;;
+        -b | --bing)
+            bing_cmd "$2"
+            break
+            ;;
+        -d | --directory)
+            select_random_wallpaper "$2"
+            break
+            ;;
+        -h | --help)
+            help | less
+            break
+            ;;
+        -u | --url)
+            url_cmd "$2"
+            break
+            ;;
+        -p | --picsum)
+            picsum_cmd
+            break
+            ;;
+        -r | --reddit)
+            reddit
+            break
+            ;;
+        -s | --search)
+            unsplash "$2"
+            break
+            ;;
+        -sa | --save)
+            save_cmd
+            break
+            ;;
+        -t | --testing)
+            testing
+            break
+            ;;
+        -v | --version)
+            version
+            break
+            ;;
+        -- | '')
+            shift
+            break
+            ;;
+        *)
+            usage
+            exit 0
+            ;;
+        esac
+    done
+    # fi
 else
     die "internet"
 fi
