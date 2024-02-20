@@ -508,7 +508,7 @@ usage() {
 }
 
 version() {
-    VERSION="0.0.14"
+    VERSION="0.0.15"
     printf "styli.sh is at %s\n" "$VERSION"
 }
 
@@ -520,9 +520,11 @@ if [[ "$VALID_ARGUMENTS" != "0" ]]; then
     usage
     exit 0
 fi
+
+# Source config file and check for internet
+source_config
 if wget --quiet --spider http://google.com; then
     #echo "Online"
-    source_config
     if root_check; then
         while true; do
             case "$1" in
