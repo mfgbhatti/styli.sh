@@ -524,68 +524,87 @@ if [[ "$VALID_ARGUMENTS" != "0" ]]; then
     exit 0
 fi
 
+# Check for internet
+check_internet_connection() {
+    timeout=5   # Adjust timeout value as needed
+    # Ping Google's DNS server as a reliable host
+    if ping -q -w "$timeout" -c 1 8.8.8.8 > /dev/null 2>&1; then
+        return 0    # Success
+    else
+        die "internet"
+    fi
+}
+
+
+
 # Source config file and check for internet
 source_config
-if wget --quiet --spider http://google.com; then
+# if wget --quiet --spider http://google.com; then
     #echo "Online"
     # if root_check; then
-    while true; do
-        case "$1" in
-        -a | --artist)
-            deviantart "$2"
-            break
-            ;;
-        -b | --bing)
-            bing_cmd "$2"
-            break
-            ;;
-        -d | --directory)
-            select_random_wallpaper "$2"
-            break
-            ;;
-        -h | --help)
-            help | less
-            break
-            ;;
-        -u | --url)
-            url_cmd "$2"
-            break
-            ;;
-        -p | --picsum)
-            picsum_cmd
-            break
-            ;;
-        -r | --reddit)
-            reddit
-            break
-            ;;
-        -s | --search)
-            unsplash "$2"
-            break
-            ;;
-        -sa | --save)
-            save_cmd
-            break
-            ;;
-        -t | --testing)
-            testing
-            break
-            ;;
-        -v | --version)
-            version
-            break
-            ;;
-        -- | '')
-            shift
-            break
-            ;;
-        *)
-            usage
-            exit 0
-            ;;
-        esac
-    done
+while true; do
+    case "$1" in
+    -a | --artist)
+        check_internet_connection
+        deviantart "$2"
+        break
+        ;;
+    -b | --bing)
+        check_internet_connection
+        bing_cmd "$2"
+        break
+        ;;
+    -d | --directory)
+        select_random_wallpaper "$2"
+        break
+        ;;
+    -h | --help)
+        help | less
+        break
+        ;;
+    -u | --url)
+        check_internet_connection
+        url_cmd "$2"
+        break
+        ;;
+    -p | --picsum)
+        check_internet_connection
+        picsum_cmd
+        break
+        ;;
+    -r | --reddit)
+        check_internet_connection
+        reddit
+        break
+        ;;
+    -s | --search)
+        check_internet_connection
+        unsplash "$2"
+        break
+        ;;
+    -sa | --save)
+        save_cmd
+        break
+        ;;
+    -t | --testing)
+        testing
+        break
+        ;;
+    -v | --version)
+        version
+        break
+        ;;
+    -- | '')
+        shift
+        break
+        ;;
+    *)
+        usage
+        exit 0
+        ;;
+    esac
+done
     # fi
-else
-    die "internet"
-fi
+# else
+#     die "internet"
+# fi
