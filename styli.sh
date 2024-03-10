@@ -225,6 +225,14 @@ do_download() {
 
 putup_wallpaer() {
     wget --timeout="$TIMEOUT" --user-agent="$USERAGENT" --no-check-certificate --quiet --output-document="$TEMP_WALL" "$TARGET_URL"
+    # Check if ImageMagick is installed
+    # if command -v convert &>/dev/null; then
+    #     # Resize the downloaded image to 1920x1080
+    #     # convert "$TEMP_WALL" -resize 1920x1080\> "$TEMP_WALL"
+    #     return 0
+    # else
+    #     die "ImageMagick is not installed. Unable to resize the image."
+    # fi
     type_check
     de_check
 }
